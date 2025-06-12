@@ -1,0 +1,33 @@
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_run:
+    workflows: ["Main"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
+
+    permissions:
+      contents: write
+      id-token: write
+
+    environment: release
+
+    steps:
+      # Set up
+      - uses: actions/checkout@v4
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: ruby
+
+      # Release
+      - uses: rubygems/release-gem@v1

@@ -1,8 +1,46 @@
+plugins:
+  - rubocop-performance
+  - rubocop-rspec
+  - rubocop-rake
+
 AllCops:
-  TargetRubyVersion: 3.1
+  TargetRubyVersion: 3.2
+  NewCops: enable
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
 Style/StringLiteralsInInterpolation:
   EnforcedStyle: double_quotes
+
+Metrics/BlockLength:
+  Exclude:
+    - "spec/**/*"
+    - "*.gemspec"
+
+Metrics/MethodLength:
+  Enabled: false
+
+Metrics/ModuleLength:
+  Enabled: false
+
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/AbcSize:
+  Exclude:
+    - "spec/**/*"
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - "spec/**/*"
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - "spec/**/*"
+
+RSpec/MultipleExpectations:
+  Enabled: false
+
+RSpec/ExampleLength:
+  Enabled: false
