@@ -22,7 +22,7 @@ $ claude mcp add echo-server studio echo "{{text#What do you want to say?}}"
 ```
 
 ```sh
-$ claude mcp add git-log studio git log --one-line -n 20 --ref "{{branch}}"
+$ claude mcp add git-log studio git log --one-line -n 20 "{{branch}}"
 ```
 
 ### Cursor
