@@ -4,7 +4,7 @@ require "shellwords"
 
 module Studio
   class Blueprint # rubocop:todo Style/Documentation
-    attr_reader :argv, :base_command, :blueprint_args
+    attr_reader :argv, :base_command, :compiled_args
 
     def self.argv(argv)
       new(argv)
@@ -13,29 +13,13 @@ module Studio
     def initialize(argv)
       @argv = argv.dup
       @base_command = @argv.shift
-      @blueprint_args = parse_blueprint_args(@argv)
+      @properties = {}
+      @compiled_args = compile_template_args(@argv)
     end
 
-    # Execute the command with provided arguments
-    def execute(args = [])
-      full_command = build_command(args)
-
-      # Spawn the process and capture output
-      stdout, stderr, status = Open3.capture3(*full_command)
-
-      {
-        stdout: stdout,
-        stderr: stderr,
-        exit_code: status.exitstatus,
-        success: status.success?
-      }
-    rescue StandardError => e
-      {
-        stdout: "",
-        stderr: "Studio error: #{e.message}",
-        exit_code: 1,
-        success: false
-      }
+    # Build the command with provided arguments
+    def build_command_args(args = [])
+      build_command(args)
     end
 
     # Get the tool name for MCP
@@ -45,108 +29,188 @@ module Studio
 
     # Get the tool description for MCP
     def tool_description
-      if @blueprint_args.any?
-        blueprint_desc = @blueprint_args.map { |arg| "{{#{arg[:name]}}}" }.join(" ")
-        "Run the shell command `#{@base_command} #{blueprint_desc}`"
-      else
-        "Run the shell command `#{@base_command} [args]`"
-      end
+      "Run the shell command `#{format_command}`"
     end
+
+    # Build display format directly from compiled args
+    # rubocop:todo Metrics/PerceivedComplexity
+    # rubocop:todo Metrics/AbcSize
+    def format_command # rubocop:todo Metrics/AbcSize, Metrics/PerceivedComplexity
+      display_parts = [@base_command]
+
+      @compiled_args.each do |compiled_arg|
+        processed_arg = +""
+        compiled_arg.each do |part|
+          case part
+          when String
+            processed_arg << part
+          when Hash
+            if part[:type] == "array"
+              processed_arg = "[#{part[:name]}...]"
+              break
+            elsif part[:required]
+              processed_arg << "{{#{part[:name]}}}"
+            else
+              processed_arg << "[#{part[:name]}]"
+            end
+          end
+        end
+        display_parts << processed_arg
+      end
+
+      display_parts = display_parts.map { |part| part.include?(" ") ? %("#{part}") : part }
+      display_parts.join(" ")
+    end
+    # rubocop:enable Metrics/AbcSize
+    # rubocop:enable Metrics/PerceivedComplexity
 
     # Get the input schema for MCP tool
     def input_schema
+      # Build properties without the internal required field
+      clean_properties = @properties.transform_values do |prop|
+        prop.except(:required)
+      end
+
       schema = {
         type: "object",
-        properties: {}
+        properties: clean_properties
       }
 
-      if @blueprint_args.empty?
-        schema[:properties][:args] = {
-          type: "array",
-          items: { type: "string" },
-          description: "Additional command line arguments"
-        }
-      else
-        # Add blueprint arguments to schema
-        @blueprint_args.each do |blueprint_arg|
-          schema[:properties][blueprint_arg[:name].to_sym] = {
-            type: "string",
-            description: blueprint_arg[:description]
-          }
-        end
-      end
+      required_fields = @properties.select { |_k, v| v[:required] }.keys.map(&:to_s)
+      schema[:required] = required_fields if required_fields.any?
 
       schema
     end
 
     private
 
-    def parse_blueprint_args(args)
-      blueprint_args = []
+    # Lexer: tokenizes a single shell word into tokens;
+    # [:text, content]
+    # [:field, opts]
+    # rubocop:todo Metrics/PerceivedComplexity
+    # rubocop:todo Metrics/AbcSize
+    def lex(word, &) # rubocop:todo Metrics/AbcSize, Metrics/PerceivedComplexity
+      return enum_for(:lex, word) unless block_given?
 
-      args.each do |arg|
-        # First check for templates with descriptions: {{name#description}}
-        arg.scan(/\{\{(\w+)\s*#\s*(.+?)\}\}/) do |name, description|
-          blueprint_args << { name: name, description: description.strip }
-        end
+      # Split on template boundaries while capturing the delimiters
+      parts = word.split(/(\{\{[^}]*\}\}|\[[^\]]*\])/)
 
-        # Then check for templates without descriptions: {{name}}
-        # Only add if we haven't already found this name with a description
-        arg.scan(/\{\{(\w+)\}\}/) do |name|
-          name = name.first
-          unless blueprint_args.any? { |ba| ba[:name] == name }
-            blueprint_args << { name: name, description: "the {{#{name}}} arg" }
+      parts.each do |part|
+        next if part.empty?
+
+        if part.match?(/^\{\{.*\}\}$/)
+          # Extract field content without the braces
+          field_content = part[2...-2]
+          name, description = field_content.split("#", 2)
+          name = name.strip
+          type = "string"
+          required = true
+          yield [:field, { name: name, description: description, content: part, required: required, type: type }]
+        elsif part.match?(/^\[.*\]$/) && part == word.strip # only accept arrays that are the entire shell word
+          field_content = part[1...-1]
+          name, description = field_content.split("#", 2)
+          name = name.strip
+
+          if name.end_with?("...")
+            name = name[0...-3]
+            type = "array"
+            required = true
+          else
+            type = "string"
+            required = false
           end
+
+          yield [:field, { name: name, description: description, content: part, required: required, type: type }]
+        else
+          yield [:text, { content: part }]
         end
       end
+    end
+    # rubocop:enable Metrics/AbcSize
+    # rubocop:enable Metrics/PerceivedComplexity
 
-      blueprint_args
+    def compile_template_args(args)
+      args.map { |arg| compile_template_arg(arg) }
+    end
+
+    def compile_template_arg(arg)
+      parts = []
+      lex(arg) do |token_type, opts|
+        case token_type
+        when :text
+          parts << opts[:content]
+        when :field, :array
+          add_property(opts)
+          parts << opts
+        end
+      end
+      parts
+    end
+
+    # update properties, allowing that a variable may be used twice, not always with the description
+    def add_property(opts) # rubocop:todo Metrics/AbcSize
+      name = opts[:name]
+      description = opts[:description]
+      type = opts[:type]
+      required = opts[:required]
+
+      name = name.to_sym
+
+      @properties[name] ||= {}
+      @properties[name][:type] = type
+      @properties[name][:required] = required # Keep this for internal tracking
+      if type == "array"
+        @properties[name][:items] = { type: "string" }
+        @properties[name][:description] = description&.strip || "Additional command line arguments"
+      elsif description
+        @properties[name][:description] = description.strip
+      end
     end
 
     # rubocop:todo Metrics/PerceivedComplexity
     # rubocop:todo Metrics/AbcSize
-    # rubocop:todo Metrics/CyclomaticComplexity
-    def build_command(args) # rubocop:todo Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/PerceivedComplexity
+    def build_command(args) # rubocop:todo Metrics/AbcSize, Metrics/PerceivedComplexity
       command_parts = [@base_command]
 
-      # Add blueprint arguments if they exist
-      if @blueprint_args.any?
-        @argv.each do |arg|
-          # Check if this argument contains any blueprint patterns
-          processed_arg = arg.dup
+      # Process compiled arguments
+      @compiled_args.each do |compiled_arg| # rubocop:todo Metrics/BlockLength
+        processed_arg = +""
+        skip_arg = false
 
-          # Replace templates with descriptions: {{name#description}}
-          processed_arg.gsub!(/\{\{(\w+)\s*#\s*.+?\}\}/) do |_match|
-            name = ::Regexp.last_match(1)
-            value = args[name.to_s] || args[name.to_sym]
-            value.to_s # Convert to string in case of nil
+        compiled_arg.each do |part|
+          case part
+          when String
+            processed_arg << part
+          when Hash
+            if part[:type] == "array"
+              # For array arguments, we expect them to be passed as the whole argument
+              value = args[part[:name]] || args[part[:name].to_sym] || []
+              value = Array(value) # Ensure it's an array
+              command_parts.concat(value) if value.any?
+              processed_arg = nil # Skip adding this as a single argument
+              break
+            else
+              value = args[part[:name]] || args[part[:name].to_sym]
+              if value.nil? || value == ""
+                if part[:required] # rubocop:todo Metrics/BlockNesting
+                  processed_arg << ""
+                else
+                  # Skip the entire argument if it's optional and not provided
+                  skip_arg = true
+                  break
+                end
+              else
+                processed_arg << value.to_s
+              end
+            end
           end
-
-          # Replace templates without descriptions: {{name}}
-          processed_arg.gsub!(/\{\{(\w+)\}\}/) do |_match|
-            name = ::Regexp.last_match(1)
-            value = args[name.to_s] || args[name.to_sym]
-            value.to_s # Convert to string in case of nil
-          end
-
-          command_parts << processed_arg
         end
-      else
-        # Add original blueprint arguments
-        command_parts.concat(@argv)
-      end
 
-      # Add additional args
-      if args.is_a?(Hash) && (args["args"] || args[:args])
-        additional_args = args["args"] || args[:args]
-        command_parts.concat(additional_args) if additional_args
-      elsif args.is_a?(Array)
-        command_parts.concat(args)
+        command_parts << processed_arg if processed_arg && !skip_arg
       end
 
       command_parts.compact
     end
-    # rubocop:enable Metrics/CyclomaticComplexity
     # rubocop:enable Metrics/AbcSize
     # rubocop:enable Metrics/PerceivedComplexity
   end

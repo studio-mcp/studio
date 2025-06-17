@@ -1,36 +1,30 @@
 # frozen_string_literal: true
 
 require "mcp"
+require "open3"
 
 module Studio
   class Tool # rubocop:todo Style/Documentation
-    # rubocop:todo Metrics/AbcSize
-    def self.for_blueprint(blueprint) # rubocop:todo Metrics/AbcSize
+    # Execute the command with provided arguments
+    def self.execute(*command)
+      output, status = Open3.capture2e(*command)
+      [output, status.success?]
+    rescue StandardError => e
+      ["Studio error: #{e.message}", false]
+    end
+
+    def self.for_blueprint(blueprint)
       Class.new(MCP::Tool) do
         tool_name blueprint.tool_name
         description blueprint.tool_description
         input_schema blueprint.input_schema
 
         define_singleton_method :call do |server_context:, **arguments| # rubocop:todo Lint/UnusedBlockArgument
-          result = blueprint.execute(arguments)
-
-          # Log stderr if present
-          warn "[Studio] #{result[:stderr]}" unless result[:stderr].empty?
-
-          if result[:success]
-            MCP::Tool::Response.new([{
-                                      type: "text",
-                                      text: result[:stdout]
-                                    }])
-          else
-            MCP::Tool::Response.new([{
-                                      type: "text",
-                                      text: result[:stdout]
-                                    }], true)
-          end
+          full_command = blueprint.build_command_args(arguments)
+          output, success = Tool.execute(*full_command)
+          MCP::Tool::Response.new([{ type: "text", text: output }], !success)
         end
       end
     end
-    # rubocop:enable Metrics/AbcSize
   end
 end

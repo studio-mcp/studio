@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "echo": {
+      "command": "bundle",
+      "args": ["exec", "exe/studio", "echo", "{{message#A message you would like echoed}}"]
+    }
+  }
+}

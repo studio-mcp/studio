@@ -1,0 +1,44 @@
+#!/bin/sh
+
+set -e
+
+# Output example
+# {
+#   "content": [
+#     {
+#       "type": "text",
+#       "text": "test message\n"
+#     }
+#   ],
+#   "isError": false
+# }
+
+raw_response=$(npx '@modelcontextprotocol/inspector' \
+  -e PWD="$(pwd)" \
+  --cli \
+  --config mcp.json \
+  --server echo \
+  --method tools/call \
+  --tool-name echo \
+  --tool-arg message="$@" 2>/dev/null)
+
+# Extract text content - get everything after "text": " until the next "
+text=$(echo "$raw_response" | sed -n 's/.*"text": "\(.*\)".*/\1/p' | head -1)
+
+# If that didn't work, try multiline extraction
+if [ -z "$text" ]; then
+  text=$(echo "$raw_response" | awk '/^[[:space:]]*"text": "/{gsub(/^[[:space:]]*"text": "/, ""); gsub(/"[[:space:]]*$/, ""); print; exit}')
+fi
+
+# Check if there's an error
+is_error=$(echo "$raw_response" | grep -o '"isError": *[^,}]*' | grep -o '[^:]*$' | tr -d ' ')
+
+# Output the text
+if [ -n "$text" ]; then
+  printf "%s" "$text"
+fi
+
+# Exit with non-zero status if there's an error
+if [ "$is_error" = "true" ]; then
+  exit 1
+fi

@@ -28,16 +28,13 @@ Metrics/ClassLength:
   Enabled: false
 
 Metrics/AbcSize:
-  Exclude:
-    - "spec/**/*"
+  Enabled: false
 
 Metrics/CyclomaticComplexity:
-  Exclude:
-    - "spec/**/*"
+  Enabled: false
 
 Metrics/PerceivedComplexity:
-  Exclude:
-    - "spec/**/*"
+  Enabled: false
 
 RSpec/MultipleExpectations:
   Enabled: false

@@ -106,7 +106,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
           "method" => "tools/list"
         }
 
-        response = send_mcp_request(%w[echo hello], request)
+        response = send_mcp_request(%w[echo hello [args...]], request)
 
         expect(response["jsonrpc"]).to eq("2.0")
         expect(response["id"]).to eq("2")
@@ -115,7 +115,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
 
         tool = response["result"]["tools"].first
         expect(tool["name"]).to eq("echo")
-        expect(tool["description"]).to eq("Run the shell command `echo [args]`")
+        expect(tool["description"]).to eq("Run the shell command `echo hello [args...]`")
         expect(tool["inputSchema"]["type"]).to eq("object")
         expect(tool["inputSchema"]["properties"]).to have_key("args")
       end
@@ -133,7 +133,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
           }
         }
 
-        response = send_mcp_request(%w[echo hello], request)
+        response = send_mcp_request(%w[echo hello [args...]], request)
 
         expect(response["jsonrpc"]).to eq("2.0")
         expect(response["id"]).to eq("3")
@@ -204,7 +204,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
           }
         }
 
-        response = send_mcp_request(["echo", "{{text#the text to echo}}"], request)
+        response = send_mcp_request(["echo", "{{text#the text to echo}}", "[args...]"], request)
 
         expect(response["jsonrpc"]).to eq("2.0")
         expect(response["id"]).to eq("6")
@@ -295,7 +295,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
         schema = tool["inputSchema"]
         expect(schema["properties"]).to have_key("text")
         expect(schema["properties"]["text"]["type"]).to eq("string")
-        expect(schema["properties"]["text"]["description"]).to eq("the {{text}} arg")
+        expect(schema["properties"]["text"]["description"]).to be_nil
       end
 
       it "executes blueprints without descriptions" do
@@ -369,11 +369,11 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
         "method" => "tools/list"
       }
 
-      response = send_mcp_request(%w[git status], request)
+      response = send_mcp_request(%w[git status [args...]], request)
 
       tool = response["result"]["tools"].first
       expect(tool["name"]).to eq("git")
-      expect(tool["description"]).to eq("Run the shell command `git [args]`")
+      expect(tool["description"]).to eq("Run the shell command `git status [args...]`")
     end
 
     it "works with multiple blueprint arguments" do
@@ -391,7 +391,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
 
       tool = response["result"]["tools"].first
       expect(tool["name"]).to eq("rails")
-      expect(tool["description"]).to eq("Run the shell command `rails {{generator}} {{name}}`")
+      expect(tool["description"]).to eq("Run the shell command `rails generate {{generator}} {{name}}`")
 
       schema = tool["inputSchema"]
       expect(schema["properties"]).to have_key("generator")
@@ -402,7 +402,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
 
   describe "Serve functionality (persistent server)" do
     describe "with simple echo command" do
-      let(:args) { %w[echo test] }
+      let(:args) { %w[echo test [args...]] }
 
       it "handles ping and tools/list" do
         requests = [
@@ -425,7 +425,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
 
         tool = responses[1]["result"]["tools"].first
         expect(tool["name"]).to eq("echo")
-        expect(tool["description"]).to eq("Run the shell command `echo [args]`")
+        expect(tool["description"]).to eq("Run the shell command `echo test [args...]`")
       end
 
       it "executes tools" do
@@ -451,7 +451,7 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
     end
 
     describe "with blueprinted command" do
-      let(:args) { ["echo", "{{message#The message to echo}}"] }
+      let(:args) { ["echo", "{{message#The message to echo}}", "[args...]"] }
 
       it "lists blueprinted tools correctly" do
         requests = [
@@ -462,11 +462,12 @@ RSpec.describe "Studio MCP Server Integration" do # rubocop:todo RSpec/DescribeC
 
         tool = responses[0]["result"]["tools"].first
         expect(tool["name"]).to eq("echo")
-        expect(tool["description"]).to eq("Run the shell command `echo {{message}}`")
+        expect(tool["description"]).to eq("Run the shell command `echo {{message}} [args...]`")
 
         schema = tool["inputSchema"]
         expect(schema["properties"]).to have_key("message")
         expect(schema["properties"]["message"]["description"]).to eq("The message to echo")
+        expect(schema["properties"]).to have_key("args")
       end
 
       it "executes blueprinted tools" do

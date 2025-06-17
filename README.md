@@ -2,7 +2,7 @@
 
 Make any CLI into a single tool MCP server.
 
-> Bright Studio Apt – No Walls, No Rules – 800/mo OBO.
+> Bright Studio Apt – No Walls, No Rules – $0/mo OBO.
 >
 > Wired and wild. No questions, no backups. rm -rf compatible. Cash only. Basement-ish. BYO everything. Just enough, nothing more.
 >
@@ -42,7 +42,7 @@ Add to your `.cursor/mcp.json` manually:
     },
     "rails": {
       "command": "studio",
-      "args": ["rails", "generate", "{{generator # A valid rails generator like scaffold, model}}"]
+      "args": ["rails", "generate", "{{generator # A valid rails generator like scaffold, model}}", "[args#Any extra args needed]"]
     }
   }
 }
@@ -72,53 +72,49 @@ $ studio echo
 
 Now you're speaking to the mcp server, so say something smart.
 
-**ping**
-
 ```json
+// ping
 {"jsonrpc":"2.0","id":"1","method":"ping"}
 ```
 
-or not... just play ping pong if you wish.
+or just play ping pong...
 
- **initialize**
+**initialize**
 
 ```json
 {"jsonrpc": "2.0","id": "2","method": "initialize","params": {"protocolVersion": "2024-11-05","capabilities": {},"clientInfo": {"name": "test-client","version": "1.0.0"}}}
 ```
 
-that's better...
-
- **list tools**
+**tool list**
 
 ```json
 {"jsonrpc":"2.0","id":"3","method":"tools/list"}
 ```
 
-Oh look, a hammer...
-
-**use tool**
+**tool call**
 
 ```json
 {"jsonrpc": "2.0","id": "4","method": "tools/call","params": {"name": "echo","arguments": {"args": ["hello", "world"]}}}
 ```
 
-### Blueprints
+### Blueprint
 
-Use blueprints (templates) to keep your studio tidy.
+Studio uses blueprints (templates) to keep your studio tidy.
 
 ```bash
-studio rails generate "{{generator # A valid rails generator like scaffold, model}}"
+studio rails generate "{{generator # A valid rails generator like scaffold, model}}" "[args# Any additional args needed for the generator]
 ```
 
-This creates an Studio server with one argument: `generator`.
-Everything after the `#` will be used as the description of the argument.
+This creates an Studio server with two arguments: `generator` and `args`.
+Everything after the `#` will be used as the description for the LLM to understand.
 
-Blueprints use the format: `{{name # description}}`.
+Blueprints use the format: `{{name # description}}` and `[name # description]` for string and array arguments.
 
-- `name`: The argument name that will be exposed in the MCP tool schema
+- `name`: The argument name that will be exposed in the MCP tool schema. May not contain spaces.
 - `description`: A description of what the argument should contain. May contain spaces.
 
-This is a simple studio, not one of those fancy 1 bedroom flats. Blueprint types, flags, arrays? The landlord will upgrade the place for free eventually, right? Right?
+This is a simple studio, not one of those fancy 1 bedroom flats.
+Blueprint types, flags, validation??? The landlord will probably upgrade the place for free eventually... right?
 
 ## Development
 
@@ -126,15 +122,14 @@ This is a simple studio, not one of those fancy 1 bedroom flats. Blueprint types
 
 Bump `version.rb`, tag it `vX.Y.Z`, push to GitHub. Trusted publishing will be happy to receive your rent check.
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, tag the release vX.Y.Z, then push the tag to github. Trusted publishing will do the rest.
+To install this gem onto your local machine, run `bundle exec rake install`.
 
 ## Home Is Where You Make It
 
 This is your studio too. Bugs, features, ideas? Swing by the repo:
+
 🏠 https://github.com/martinemde/studio
 
 ## Lease Terms: MIT
 
-Move in under the standard terms, no fine print. Full text here: [MIT License](https://opensource.org/licenses/MIT).
+Move in under standard terms, no fine print. Full text here: [MIT License](https://opensource.org/licenses/MIT).

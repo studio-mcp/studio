@@ -1,3 +1,5 @@
 #!/bin/sh
 
-npx @modelcontextprotocol/inspector -e PWD="$(pwd)" bundle exec ruby -I"$(pwd)/lib" "$(pwd)/exe/studio" $@
+set -ex
+
+npx '@modelcontextprotocol/inspector' -e PWD="$(pwd)" bundle exec "$(pwd)/exe/studio" $@
