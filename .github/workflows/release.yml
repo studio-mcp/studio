@@ -76,7 +76,7 @@ jobs:
           npm pack --dry-run
 
       - name: Publish to NPM
-        run: npm publish --provenance --registry https://registry.npmjs.org
+        run: npm publish --provenance --registry https://registry.npmjs.org --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
