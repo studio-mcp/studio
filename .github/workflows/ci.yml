@@ -38,7 +38,7 @@ jobs:
         run: go mod download
 
       - name: Install npm dependencies
-        run: npm install
+        run: npm install --ignore-scripts
 
       - name: Run tests
         run: go test -v ./...
