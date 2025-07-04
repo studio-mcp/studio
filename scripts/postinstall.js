@@ -45,7 +45,7 @@ const readPackageJson = async () => {
 
 // Build the download url from package.json
 const getDownloadUrl = (packageJson) => {
-  const pkgName = packageJson.name;
+  const pkgName = path.basename(packageJson.name);
   // Use the actual installed version from npm environment, fallback to package.json
   const version = process.env.npm_package_version || packageJson.version;
   const repo = packageJson.repository;
@@ -56,7 +56,7 @@ const getDownloadUrl = (packageJson) => {
 const fetchAndParseCheckSumFile = async (packageJson, agent) => {
   // Use the actual installed version from npm environment, fallback to package.json
   const version = process.env.npm_package_version || packageJson.version;
-  const pkgName = packageJson.name;
+  const pkgName = path.basename(packageJson.name);
   const repo = packageJson.repository;
   const checksumFileUrl = `https://github.com/${repo}/releases/download/v${version}/${pkgName}_${version}_checksums.txt`;
 
