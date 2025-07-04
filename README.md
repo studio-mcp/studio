@@ -10,17 +10,17 @@ Make any CLI into a single tool MCP server.
 
 ## What's Included?
 
-`studio-mcp` is the simplest possible [stdio](https://modelcontextprotocol.io/docs/concepts/transports) [Model Context Protocol](https://modelcontextprotocol.io/) server.
+`studio` is the simplest possible [stdio](https://modelcontextprotocol.io/docs/concepts/transports) [Model Context Protocol](https://modelcontextprotocol.io/) server.
 
-Everything after the `studio-mcp` command will be turned into an MCP tool that runs just that command when called by Cursor, Claude, etc.
+Everything after the `studio` command will be turned into an MCP tool that runs just that command when called by Cursor, Claude, etc.
 
-`studio-mcp` uses a very simple Mustache-like template syntax in order to tell the LLM how to use your MCP command.
+`studio` uses a very simple Mustache-like template syntax in order to tell the LLM how to use your MCP command.
 
 ```sh
-$ npx --silent -y studio-mcp command "{{ required_argument # Description of argument }}" "[optional_args... # any array of arguments]"
+$ npx --silent -y @studio-mcp/studio command "{{ required_argument # Description of argument }}" "[optional_args... # any array of arguments]"
 ```
 
-`studio-mcp` turns this into an input schema for the MCP tool so that tool calls know what to send:
+`studio` turns this into an input schema for the MCP tool so that tool calls know what to send:
 
 ```json
 {
@@ -40,13 +40,13 @@ You can run almost any command. Since you're just renting the place, please be a
 These install instructions are like my lease agreement: full of gotchas.
 Have your lawyer read it over. (You do have a lawyer right?)
 
-You can install to your system with `npm`, use `npx` directly, or install with `go install github.com/studio-mcp/studio-mcp@latest`
+You can install to your system with `npm`, use `npx` directly, or install with `go install github.com/studio-mcp/studio@latest`
 
 ```sh
-npm install -g studio-mcp
+npm install -g @studio-mcp/studio
 ```
 
-Or download directly from [GitHub Releases](https://github.com/studio-mcp/studio-mcp/releases/latest) and add to your PATH yourself.
+Or download directly from [GitHub Releases](https://github.com/studio-mcp/studio/releases/latest) and add to your PATH yourself.
 
 ## Unpack (it's an apartment metaphor)
 
@@ -63,8 +63,8 @@ It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Applicati
 {
   "mcpServers": {
     "say": {
-      "command": "studio-mcp",
-      "args": ["--silent", "-y", "studio-mcp", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+          "command": "@studio-mcp/studio",
+    "args": ["--silent", "-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
   }
 }
@@ -79,7 +79,7 @@ Add to your `~/.cursor/mcp.json` (in your home or project directory) or go to To
   "mcpServers": {
     "say": {
       "command": "npx",
-      "args": ["--silent", "-y", "studio-mcp", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+      "args": ["--silent", "-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
   }
 }
@@ -97,7 +97,7 @@ It's a lot of the same here.
         "type": "stdio",
         "command": "npx",
 
-        "args": ["--silent", "-y", "studio-mcp", "echo", "{{text#What do you want to say?}}"]
+        "args": ["--silent", "-y", "@studio-mcp/studio", "echo", "{{text#What do you want to say?}}"]
       }
     }
   }
@@ -109,7 +109,7 @@ It's a lot of the same here.
 Studio uses blueprints (templates) to keep your studio tidy.
 
 ```bash
-studio-mcp say -v "{{voice# Choose your Mac say voice}}" "[args...#Any additional args]"
+studio say -v "{{voice# Choose your Mac say voice}}" "[args...#Any additional args]"
 ```
 
 This creates a Studio server with two arguments: `voice` and `args`.
@@ -141,7 +141,7 @@ To build and test locally:
 ```bash
 make
 make test
-studio-mcp echo "{{text # what you want said to you}}"
+studio echo "{{text # what you want said to you}}"
 ```
 
 ### Did something break?
@@ -159,7 +159,7 @@ Uncovered portions are tenant's responsibility. (no one appreciates how hard it 
 
 This is your studio too. Bugs, bedbugs, features, ideas? Swing by the repo during open-house:
 
-🏠 https://github.com/studio-mcp/studio-mcp
+🏠 https://github.com/studio-mcp/studio
 
 ## Lease Terms: MIT
 

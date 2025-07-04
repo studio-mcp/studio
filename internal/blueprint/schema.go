@@ -84,5 +84,14 @@ func (bp *Blueprint) GenerateInputSchema() *jsonschema.Schema {
 		Required:   required, // Always set, even if empty
 	}
 
+	// Debug logging
+	debug("GenerateInputSchema created schema with %d properties, %d required", len(properties), len(required))
+	for name, prop := range properties {
+		debug("  property %s: type=%s, description=%s", name, prop.Type, prop.Description)
+	}
+	for _, req := range required {
+		debug("  required: %s", req)
+	}
+
 	return schema
 }

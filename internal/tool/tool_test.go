@@ -3,6 +3,7 @@ package tool
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -89,6 +90,53 @@ func TestTool_DebugMode(t *testing.T) {
 		// Reset for other tests
 		SetDebugMode(false)
 		assert.False(t, IsDebugMode())
+	})
+}
+
+func TestTool_LogFile(t *testing.T) {
+	// Create a temporary log file
+	tmpFile, err := os.CreateTemp("", "test_log_*.log")
+	assert.NoError(t, err)
+	tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
+
+	t.Run("can set log file", func(t *testing.T) {
+		err := SetLogFile(tmpFile.Name())
+		assert.NoError(t, err)
+	})
+
+	t.Run("debug messages are written to log file", func(t *testing.T) {
+		// Enable debug mode and set log file
+		SetDebugMode(true)
+		err := SetLogFile(tmpFile.Name())
+		assert.NoError(t, err)
+
+		// Execute a command that will generate debug output
+		_, err = Execute("echo", "test log message")
+		assert.NoError(t, err)
+
+		// Read the log file
+		content, err := os.ReadFile(tmpFile.Name())
+		assert.NoError(t, err)
+
+		// Check that debug messages are in the log file
+		logContent := string(content)
+		assert.Contains(t, logContent, "Executing command: echo test log message")
+		assert.Contains(t, logContent, "Command completed successfully with exit code 0")
+
+		// Reset for other tests
+		SetDebugMode(false)
+		if logFile != nil {
+			logFile.Close()
+			logFile = nil
+			logger = nil
+		}
+	})
+
+	t.Run("handles invalid log file path", func(t *testing.T) {
+		err := SetLogFile("/invalid/path/that/does/not/exist.log")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to open log file")
 	})
 }
 

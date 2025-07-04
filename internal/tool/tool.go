@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -21,10 +22,30 @@ type Blueprint interface {
 }
 
 var debugMode bool
+var logFile *os.File
+var logger *log.Logger
 
 // SetDebugMode enables or disables debug mode
 func SetDebugMode(enabled bool) {
 	debugMode = enabled
+}
+
+// SetLogFile sets the log file for debug output
+func SetLogFile(filename string) error {
+	// Close existing log file if open
+	if logFile != nil {
+		logFile.Close()
+	}
+
+	// Open new log file
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open log file %s: %w", filename, err)
+	}
+
+	logFile = file
+	logger = log.New(file, "[Studio MCP] ", log.LstdFlags)
+	return nil
 }
 
 // IsDebugMode returns whether debug mode is enabled
@@ -35,7 +56,11 @@ func IsDebugMode() bool {
 // debug logs a message to stderr if debug mode is enabled
 func debug(format string, args ...interface{}) {
 	if IsDebugMode() {
-		fmt.Fprintf(os.Stderr, "[Studio MCP] "+format+"\n", args...)
+		if logger != nil {
+			logger.Printf(format, args...)
+		} else {
+			fmt.Fprintf(os.Stderr, "[Studio MCP] "+format+"\n", args...)
+		}
 	}
 }
 
@@ -104,6 +129,18 @@ func CreateServerTool(blueprint Blueprint) *mcp.ServerTool {
 	if !ok {
 		// This should never happen if the Blueprint interface is implemented correctly
 		panic("blueprint.GetInputSchema() must return *jsonschema.Schema")
+	}
+
+	// Debug logging
+	debug("CreateServerTool called")
+	debug("  Schema type: %s", schema.Type)
+	debug("  Schema properties count: %d", len(schema.Properties))
+	for name, prop := range schema.Properties {
+		debug("    property %s: type=%s, description=%s", name, prop.Type, prop.Description)
+	}
+	debug("  Schema required count: %d", len(schema.Required))
+	for _, req := range schema.Required {
+		debug("    required: %s", req)
 	}
 
 	return mcp.NewServerTool(

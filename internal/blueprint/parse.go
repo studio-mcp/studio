@@ -2,8 +2,18 @@ package blueprint
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
+
+// debug is a local wrapper around tool package debug functionality
+func debug(format string, args ...interface{}) {
+	// We'll use fmt.Fprintf to stderr for now since we can't easily access tool.debug
+	// This is a simple implementation that will work for our debugging needs
+	if true { // Always log for now during debugging
+		fmt.Fprintf(os.Stderr, "[Studio MCP Blueprint] "+format+"\n", args...)
+	}
+}
 
 // FromArgs creates a new Blueprint from command arguments using tokenization
 func FromArgs(args []string) (*Blueprint, error) {
@@ -15,6 +25,12 @@ func FromArgs(args []string) (*Blueprint, error) {
 		return nil, fmt.Errorf("cannot create blueprint: empty command provided")
 	}
 
+	// Debug logging: log the exact arguments received
+	debug("FromArgs called with %d arguments:", len(args))
+	for i, arg := range args {
+		debug("  args[%d]: %q", i, arg)
+	}
+
 	bp := &Blueprint{
 		BaseCommand: args[0],
 		ShellWords:  make([][]Token, len(args)),
@@ -24,6 +40,10 @@ func FromArgs(args []string) (*Blueprint, error) {
 	for i, arg := range args {
 		tokens := tokenizeShellWord(arg)
 		bp.ShellWords[i] = tokens
+		debug("  shellword[%d] %q -> %d tokens", i, arg, len(tokens))
+		for j, token := range tokens {
+			debug("    token[%d]: %T %q", j, token, token.String())
+		}
 	}
 
 	return bp, nil

@@ -11,19 +11,19 @@ COMMIT ?= $(shell git rev-parse --short HEAD)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 build: ## Build the Go binary
-	go build -ldflags "-X main.Version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)" -o bin/studio-mcp
+	go build -ldflags "-X main.Version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)" -o bin/studio
 
 install-dev: build ## Build and install binary to /usr/local/bin for dev testing
-	@echo "Installing studio-mcp to /usr/local/bin..."
-	sudo cp bin/studio-mcp /usr/local/bin/studio-mcp-dev
-	@echo "✅ Installed as 'studio-mcp-dev' (to avoid conflicts with released version)"
-	@echo "📋 Test with: studio-mcp-dev --version"
+	@echo "Installing studio to /usr/local/bin..."
+	sudo cp bin/studio /usr/local/bin/studio-dev
+	@echo "✅ Installed as 'studio-dev' (to avoid conflicts with released version)"
+	@echo "📋 Test with: studio-dev --version"
 	@echo "📋 Uninstall with: make uninstall-dev"
 
 uninstall-dev: ## Remove dev binary from /usr/local/bin
-	@echo "Removing studio-mcp-dev from /usr/local/bin..."
-	sudo rm -f /usr/local/bin/studio-mcp-dev
-	@echo "✅ Uninstalled studio-mcp-dev"
+	@echo "Removing studio-dev from /usr/local/bin..."
+	sudo rm -f /usr/local/bin/studio-dev
+	@echo "✅ Uninstalled studio-dev"
 
 claude: install-dev ## Install echo server into Claude Desktop MCP config
 	@echo "Installing echo server into Claude Desktop..."
@@ -39,7 +39,7 @@ claude: install-dev ## Install echo server into Claude Desktop MCP config
 	const config = JSON.parse(fs.readFileSync(configPath, 'utf8')); \
 	config.mcpServers = config.mcpServers || {}; \
 	config.mcpServers.echo = { \
-		command: '/usr/local/bin/studio-mcp-dev', \
+		command: '/usr/local/bin/studio-dev', \
 		args: ['echo', '{{text # a message that will be echoed back to you}}'] \
 	}; \
 	fs.writeFileSync(configPath, JSON.stringify(config, null, 2));" && \
@@ -79,7 +79,7 @@ version: ## Show current version information
 	@echo "Package.json version: $(shell grep '"version"' package.json | cut -d'"' -f4)"
 	@echo ""
 	@echo "Binary version:"
-	@if [ -f bin/studio-mcp ]; then ./bin/studio-mcp --version; else echo "Binary not built. Run 'make build' first."; fi
+	@if [ -f bin/studio ]; then ./bin/studio --version; else echo "Binary not built. Run 'make build' first."; fi
 
 sync-version: ## Sync package.json version with latest git tag (for testing)
 	./scripts/sync-version.sh
@@ -102,7 +102,7 @@ verify-release: ## Verify the release setup locally
 	@echo "✅ Tests passed"
 	@echo ""
 	@echo "3. Testing binary..."
-	./bin/studio-mcp --version
+	./bin/studio --version
 	@echo "✅ Binary works"
 	@echo ""
 	@echo "4. Checking GoReleaser config..."
@@ -171,13 +171,13 @@ endif
 	@echo "  • Publish NPM package that fetches those binaries"
 	@echo ""
 	@echo "📋 Monitor progress:"
-	@echo "  1. GitHub Actions: https://github.com/studio-mcp/studio-mcp/actions"
-	@echo "  2. GitHub Release: https://github.com/studio-mcp/studio-mcp/releases"
-	@echo "  3. NPM Package: https://www.npmjs.com/package/studio-mcp"
-	@echo "  4. Test install: npm install studio-mcp@$(VERSION)"
+	@echo "  1. GitHub Actions: https://github.com/studio-mcp/studio/actions"
+	@echo "  2. GitHub Release: https://github.com/studio-mcp/studio/releases"
+	@echo "  3. NPM Package: https://www.npmjs.com/package/@studio-mcp/studio"
+	@echo "  4. Test install: npm install @studio-mcp/studio@$(VERSION)"
 
 dev: ## Run in development mode
 	go run -ldflags "-X main.Version=dev -X main.commit=$(COMMIT) -X main.date=$(DATE)" . $(ARGS)
 
 clean: ## Clean build artifacts
-	rm -rf bin/studio-mcp dist/ studio-mcp
+	rm -rf bin/studio dist/ studio

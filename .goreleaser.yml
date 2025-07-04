@@ -1,6 +1,6 @@
 version: 2
 
-project_name: studio-mcp
+project_name: studio
 
 before:
   hooks:
@@ -9,8 +9,8 @@ before:
     - go generate ./...
 
 builds:
-  - id: studio-mcp
-    binary: studio-mcp
+  - id: studio
+    binary: studio
     main: ./main.go
     flags:
       - -trimpath
@@ -61,11 +61,11 @@ changelog:
 # Generate Linux packages
 nfpms:
   - id: packages
-    package_name: studio-mcp
+    package_name: studio
     vendor: Studio MCP
-    description: Make any CLI command an MCP server
+    description: One word MCP for any CLI command
     maintainer: Martin Emde <me@martinemde.com>
-    homepage: https://github.com/studio-mcp/studio-mcp
+    homepage: https://github.com/studio-mcp/studio
     license: MIT
     formats:
       - apk
@@ -75,12 +75,12 @@ nfpms:
 
 # Homebrew tap (optional - can be added later)
 # brews:
-#   - name: studio-mcp
+#   - name: studio
 #     repository:
 #       owner: studio-mcp
 #       name: homebrew-tap
-#     homepage: https://github.com/studio-mcp/studio-mcp
-#     description: Make any CLI command an MCP server
+#     homepage: https://github.com/studio-mcp/studio
+#     description: One word MCP for any CLI command
 #     license: MIT
 
 release:

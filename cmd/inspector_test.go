@@ -57,7 +57,7 @@ type InspectorContent struct {
 	Text string `json:"text"`
 }
 
-// TestMCPInspectorSmokeTest tests studio-mcp using the MCP inspector
+// TestMCPInspectorSmokeTest tests studio using the MCP inspector
 // This is a smoke test that verifies the MCP server works correctly with the
 // official MCP inspector tool.
 func TestMCPInspectorSmokeTest(t *testing.T) {
@@ -72,8 +72,8 @@ func TestMCPInspectorSmokeTest(t *testing.T) {
 	err = os.MkdirAll(binDir, 0755)
 	require.NoError(t, err)
 
-	// Build to bin/studio-mcp
-	binaryPath := filepath.Join(binDir, "studio-mcp")
+	// Build to bin/studio
+	binaryPath := filepath.Join(binDir, "studio")
 	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
 	buildCmd.Dir = projectRoot
 	err = buildCmd.Run()

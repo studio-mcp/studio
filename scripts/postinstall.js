@@ -3,7 +3,7 @@
 // Adapted from https://github.com/supabase/cli/blob/develop/scripts/postinstall.js
 // Copyright (c) 2021 Supabase, Inc. and contributors
 // Released under the MIT License
-// Adapted for studio-mcp 2025-07-02
+// Adapted for @studio-mcp/studio 2025-07-02
 
 // NOTE: we output to stderrr because stdout is reserved for MCP NDJSON.
 
@@ -151,7 +151,7 @@ async function main() {
   }
 
   const hash = createHash("sha256");
-  const pkgNameWithPlatform = `studio-mcp_${platform}_${arch}.tar.gz`;
+  const pkgNameWithPlatform = `studio_${platform}_${arch}.tar.gz`;
 
   // Then, decompress the binary -- we will first Un-GZip, then we will untar.
   const ungz = zlib.createGunzip();

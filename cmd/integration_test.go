@@ -49,8 +49,8 @@ func sendMCPRequest(t *testing.T, commandArgs []string, request MCPRequest, time
 	err = os.MkdirAll(binDir, 0755)
 	require.NoError(t, err)
 
-	// Build to bin/studio-mcp
-	binaryPath := filepath.Join(binDir, "studio-mcp")
+	// Build to bin/studio
+	binaryPath := filepath.Join(binDir, "studio")
 	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
 	buildCmd.Dir = projectRoot
 	err = buildCmd.Run()
@@ -222,7 +222,7 @@ func TestStudioMCPServerIntegration(t *testing.T) {
 
 			serverInfo, ok := result["serverInfo"].(map[string]interface{})
 			require.True(t, ok, "serverInfo should be an object")
-			assert.Equal(t, "studio-mcp", serverInfo["name"])
+			assert.Equal(t, "studio", serverInfo["name"])
 		})
 	})
 
@@ -759,12 +759,12 @@ func TestStudioMCPServerIntegration(t *testing.T) {
 }
 
 // TestArgumentParsingRegression tests the specific issue where flags in command
-// templates (like -v in "say -v siri") were incorrectly parsed as studio-mcp flags
+// templates (like -v in "say -v siri") were incorrectly parsed as studio flags
 func TestArgumentParsingRegression(t *testing.T) {
 	timeout := 5 * time.Second
 
 	t.Run("SayCommandWithVoiceFlag", func(t *testing.T) {
-		t.Run("should not parse -v as studio-mcp flag", func(t *testing.T) {
+		t.Run("should not parse -v as studio flag", func(t *testing.T) {
 			request := MCPRequest{
 				JSONRPC: "2.0",
 				ID:      "say-test-1",

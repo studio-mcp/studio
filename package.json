@@ -1,12 +1,16 @@
 {
-  "name": "studio-mcp",
-  "version": "0.0.0-automated",
-  "description": "Make any CLI command an MCP server",
+  "name": "@studio-mcp/studio",
+  "version": "0.1.0",
+  "description": "One word MCP for any CLI command",
+  "main": "index.js",
   "bin": {
-    "studio-mcp": "./bin/studio-mcp"
+    "studio": "./bin/studio"
   },
   "scripts": {
-    "postinstall": "node scripts/postinstall.js"
+    "postinstall": "node scripts/postinstall.js",
+    "inspector": "npx @modelcontextprotocol/inspector",
+    "inspector:echo": "npx @modelcontextprotocol/inspector --cli bin/studio echo '{{text#message to echo}}' --method tools/list",
+    "inspector:git": "npx @modelcontextprotocol/inspector --cli bin/studio git '[args...]' --method tools/list"
   },
   "keywords": [
     "mcp",
@@ -17,8 +21,8 @@
   ],
   "author": "Martin Emde <me@martinemde.com>",
   "license": "MIT",
-  "homepage": "https://github.com/studio-mcp/studio-mcp",
-  "repository": "studio-mcp/studio-mcp",
+  "homepage": "https://github.com/studio-mcp/studio",
+  "repository": "studio-mcp/studio",
   "files": [
     "scripts/",
     "README.md",
@@ -30,5 +34,8 @@
     "https-proxy-agent": "^7.0.2",
     "node-fetch": "^3.3.2",
     "tar": "7.4.3"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.15.0"
   }
 }

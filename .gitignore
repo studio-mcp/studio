@@ -8,8 +8,8 @@ yarn-error.log*
 coverage/
 
 # Binaries
-studio-mcp
-bin/studio-mcp
+studio
+bin/studio
 .DS_Store
 *.tgz
 .npm

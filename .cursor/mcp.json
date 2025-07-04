@@ -1,8 +1,16 @@
 {
-    "mcpServers": {
-      "say": {
-        "command": "npx",
-        "args": ["--silent", "-y", "studio-mcp", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
-      },
+  "mcpServers": {
+    "say": {
+      "command": "~/Projects/github.com/studio-mcp/studio/bin/studio",
+      "args": [
+        "--debug",
+        "--log",
+        "~/Projects/github.com/studio-mcp/studio/say.log",
+        "say",
+        "-v",
+        "siri",
+        "{{speech}}"
+      ]
     }
   }
+}

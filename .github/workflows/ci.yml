@@ -63,7 +63,7 @@ jobs:
         run: go build -v ./...
 
       - name: Build main binary
-        run: go build -o studio-mcp ./main.go
+        run: go build -o studio ./main.go
 
       - name: Test binary
-        run: ./studio-mcp --version
+        run: ./studio --version

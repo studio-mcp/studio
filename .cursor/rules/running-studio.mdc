@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+---
+The studio binary is an MCP server. You can test it in the console like this (just don't put any explamation points):
+
+# List available tools
+npx @modelcontextprotocol/inspector --cli bin/studio echo "{{text# the string to echo}}" --method tools/list
+
+# Call a specific tool
+npx @modelcontextprotocol/inspector --cli bin/studio echo "{{text# the string to echo}}" --method tools/call --tool-name echo --tool-arg text="echo me" --tool-arg another=value2

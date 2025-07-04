@@ -1,6 +1,6 @@
 # Studio MCP Release Process
 
-This document contains instructions for managing releases of the studio-mcp project, which uses a dual-publish system: Go binaries distributed via GitHub Releases and an npm wrapper package.
+This document contains instructions for managing releases of the studio project, which uses a dual-publish system: Go binaries distributed via GitHub Releases and an npm wrapper package.
 
 ## Architecture Overview
 
@@ -31,8 +31,8 @@ git checkout main
 git pull origin main
 
 # Test that everything builds locally
-go build -o studio-mcp ./main.go
-./studio-mcp --version
+go build -o studio ./main.go
+./studio --version
 
 # Run tests if available
 go test ./...
@@ -69,23 +69,23 @@ The GitHub Actions workflow (`.github/workflows/release.yml`) automatically:
    - Creates GitHub release with archives
    - Includes package.json and package-lock.json in release
 3. **Extracts individual binaries** for npm compatibility:
-   - `studio-mcp-linux` (from Linux archive)
-   - `studio-mcp-macos` (from Darwin archive)
-   - `studio-mcp-win.exe` (from Windows archive)
+   - `studio-linux` (from Linux archive)
+   - `studio-macos` (from Darwin archive)
+   - `studio-win.exe` (from Windows archive)
 4. **Publishes to npm** using NODE_AUTH_TOKEN
 
 ### Step 5: Verify Release
 ```bash
 # Check GitHub release was created
-open https://github.com/studio-mcp/studio-mcp/releases/latest
+open https://github.com/studio-mcp/studio/releases/latest
 
 # Test npm installation
-npm install -g studio-mcp@latest
-studio-mcp --version
+npm install -g @studio-mcp/studio@latest
+studio --version
 
 # Test Go installation
-go install github.com/studio-mcp/studio-mcp@latest
-studio-mcp --version
+go install github.com/studio-mcp/studio@latest
+studio --version
 ```
 
 ## Required Secrets
@@ -95,8 +95,8 @@ GitHub repository must have these secrets configured:
 
 ## Binary Naming Convention
 
-- **GoReleaser creates**: `studio-mcp_Linux_x86_64.tar.gz`, `studio-mcp_Darwin_x86_64.tar.gz`, `studio-mcp_Windows_x86_64.zip`
-- **GitHub Actions extracts to**: `studio-mcp-linux`, `studio-mcp-macos`, `studio-mcp-win.exe`
+- **GoReleaser creates**: `studio_Linux_x86_64.tar.gz`, `studio_Darwin_x86_64.tar.gz`, `studio_Windows_x86_64.zip`
+- **GitHub Actions extracts to**: `studio-linux`, `studio-macos`, `studio-win.exe`
 - **npm wrapper expects**: Platform-specific binaries with consistent naming
 
 ## Troubleshooting
@@ -138,8 +138,8 @@ goreleaser check
 ./scripts/sync-version.sh
 
 # Build locally to verify
-go build -o studio-mcp ./main.go
-./studio-mcp --version
+go build -o studio ./main.go
+./studio --version
 ```
 
 ## File Responsibilities

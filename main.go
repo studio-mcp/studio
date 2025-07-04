@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 package main
 
-import "studio-mcp/cmd"
+import "github.com/studio-mcp/studio/cmd"
 
 // Version information injected by GoReleaser at build time
 var (
