@@ -1,6 +1,6 @@
 {
   "name": "@studio-mcp/studio",
-  "version": "0.0.0-automated",
+  "version": "0.0.0",
   "description": "One word MCP for any CLI command",
   "main": "index.js",
   "bin": {
