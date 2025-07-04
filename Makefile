@@ -1,4 +1,4 @@
-.PHONY: help build test version sync-version release dev clean verify-release pre-release-checks install-dev uninstall-dev claude claude-remove
+.PHONY: help build test version sync-version release dev clean verify-release pre-release-checks install-dev uninstall-dev claude claude-remove test-inspector
 
 # Default target
 help: ## Show this help message
@@ -68,6 +68,9 @@ claude-remove: ## Remove echo server from Claude Desktop MCP config
 
 test: ## Run tests
 	go test ./...
+
+test-inspector: ## Run MCP inspector tests
+	cd cmd && go test -v ./inspector_test.go
 
 version: ## Show current version information
 	@echo "Version: $(VERSION)"
