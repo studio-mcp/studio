@@ -1,6 +1,6 @@
 {
   "name": "@studio-mcp/studio",
-  "version": "0.0.0",
+  "version": "0.0.20",
   "description": "One word MCP for any CLI command",
   "main": "index.js",
   "bin": {
@@ -34,8 +34,5 @@
     "https-proxy-agent": "^7.0.2",
     "node-fetch": "^3.3.2",
     "tar": "7.4.3"
-  },
-  "devDependencies": {
-    "@modelcontextprotocol/inspector": "^0.15.0"
   }
 }
