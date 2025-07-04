@@ -4,7 +4,7 @@ Make any CLI into a single tool MCP server.
 
 > Bright Studio Apt – No Walls, No Rules – $0/mo OBO.
 >
-> Wired and wild. No questions. rm -rf compatible. Cash only. Basement-ish. Just enough, nothing more.
+> No questions. Cash only. Basement-ish. Just enough, nothing more.
 >
 > Text 404 to /dev/null for more details!
 
@@ -14,10 +14,12 @@ Make any CLI into a single tool MCP server.
 
 Everything after the `studio` command will be turned into an MCP tool that runs just that command when called by Cursor, Claude, etc.
 
-`studio` uses a very simple Mustache-like template syntax in order to tell the LLM how to use your MCP command.
+`studio` is great for debugging MCPs or providing custom scripts to your LLM without having to deal with MCP.
+
+It uses a very simple Mustache-like template syntax in order to tell the LLM how to use your MCP command.
 
 ```sh
-$ npx --silent -y @studio-mcp/studio command "{{ required_argument # Description of argument }}" "[optional_args... # any array of arguments]"
+$ npx -y @studio-mcp/studio command "{{ required_argument # Description of argument }}" "[optional_args... # any array of arguments]"
 ```
 
 `studio` turns this into an input schema for the MCP tool so that tool calls know what to send:
@@ -33,7 +35,9 @@ $ npx --silent -y @studio-mcp/studio command "{{ required_argument # Description
 }
 ```
 
-You can run almost any command. Since you're just renting the place, please be a good tenant and don't `rm -rf` anything.
+You can run almost any command, but you might need to put the full path for scripts or commands installed via other package managers. Just run `which cmd` to find it's full path.
+
+Since you're just renting the place, please be a good tenant and don't `rm -rf` anything.
 
 ## Move-In
 
@@ -64,7 +68,7 @@ It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Applicati
   "mcpServers": {
     "say": {
           "command": "@studio-mcp/studio",
-    "args": ["--silent", "-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+    "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
   }
 }
@@ -79,7 +83,7 @@ Add to your `~/.cursor/mcp.json` (in your home or project directory) or go to To
   "mcpServers": {
     "say": {
       "command": "npx",
-      "args": ["--silent", "-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
   }
 }
@@ -97,7 +101,7 @@ It's a lot of the same here.
         "type": "stdio",
         "command": "npx",
 
-        "args": ["--silent", "-y", "@studio-mcp/studio", "echo", "{{text#What do you want to say?}}"]
+        "args": ["-y", "@studio-mcp/studio", "echo", "{{text#What do you want to say?}}"]
       }
     }
   }
