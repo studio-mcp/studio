@@ -8,9 +8,9 @@ Make any CLI into an AI tool with `studio` MCP server.
 
 ## What's Included?
 
-`studio` is the simplest possible way to add CLI tools that you AI Agent can use right now. Built on the [Model Context Protocol](https://modelcontextprotocol.io/), `studio` spawns a single tool mcp server with your command.
+`studio` is the simplest possible way to add CLI tools that your AI Agent can use right now. Built on the [Model Context Protocol](https://modelcontextprotocol.io/), `studio` spawns a single tool mcp server with your command.
 
-The tool turns verything after the `studio` command into an MCP tool that runs thr command when called by Cursor, Claude, etc.
+The tool turns everything after `studio` command into an MCP tool that can be called by Cursor, Claude, etc.
 
 `studio` is great for patching CLIs into Claude, debugging MCPs or providing custom scripts to your LLM without having to deal with MCP.
 
