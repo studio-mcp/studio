@@ -1,22 +1,20 @@
 # Studio MCP
 
-Make any CLI into a single tool MCP server.
+Make any CLI into an AI tool with `studio` MCP server.
 
-> Bright Studio Apt – No Walls, No Rules – $0/mo OBO.
+> Bright Studio Apt – Just enough, nothing more – $0/mo OBO.
 >
-> No questions. Cash only. Basement-ish. Just enough, nothing more.
->
-> Text 404 to /dev/null for more details!
+> Text 404 for more details!
 
 ## What's Included?
 
-`studio` is the simplest possible [stdio](https://modelcontextprotocol.io/docs/concepts/transports) [Model Context Protocol](https://modelcontextprotocol.io/) server.
+`studio` is the simplest possible way to add CLI tools that you AI Agent can use right now. Built on the [Model Context Protocol](https://modelcontextprotocol.io/), `studio` spawns a single tool mcp server with your command.
 
-Everything after the `studio` command will be turned into an MCP tool that runs just that command when called by Cursor, Claude, etc.
+The tool turns verything after the `studio` command into an MCP tool that runs thr command when called by Cursor, Claude, etc.
 
-`studio` is great for debugging MCPs or providing custom scripts to your LLM without having to deal with MCP.
+`studio` is great for patching CLIs into Claude, debugging MCPs or providing custom scripts to your LLM without having to deal with MCP.
 
-It uses a very simple Mustache-like template syntax in order to tell the LLM how to use your MCP command.
+It uses a very simple Mustache-like template syntax to provide inputs and descriptions telling the LLM how to use your command.
 
 ```sh
 $ npx -y @studio-mcp/studio command "{{ required_argument # Description of argument }}" "[optional_args... # any array of arguments]"
@@ -67,8 +65,8 @@ It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Applicati
 {
   "mcpServers": {
     "say": {
-          "command": "@studio-mcp/studio",
-    "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+      "command": "npx",
+      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
   }
 }
@@ -78,12 +76,14 @@ It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Applicati
 
 Add to your `~/.cursor/mcp.json` (in your home or project directory) or go to Tools section of the Cursor UI.
 
+*Note:* A bug in Cursor breaks args with spaces.
+
 ```json
 {
   "mcpServers": {
     "say": {
       "command": "npx",
-      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech#say_outloud}}"]
     },
   }
 }
@@ -91,7 +91,7 @@ Add to your `~/.cursor/mcp.json` (in your home or project directory) or go to To
 
 ### VSCode
 
-It's a lot of the same here.
+It's a lot of the same here. Don't get confused betwee studio and stdio (that's how I got the name).
 
 ```json
 {
