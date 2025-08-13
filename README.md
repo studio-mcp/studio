@@ -17,7 +17,7 @@ The tool turns everything after `studio` command into an MCP tool that can be ca
 It uses a very simple Mustache-like template syntax to provide inputs and descriptions telling the LLM how to use your command.
 
 ```sh
-$ npx -y @studio-mcp/studio command "{{ required_argument # Description of argument }}" "[optional_args... # any array of arguments]"
+$ npx -y @studio-mcp/studio command "{ required_argument # Description of argument }" "[optional_args... # any array of arguments]"
 ```
 
 `studio` turns this into an input schema for the MCP tool so that tool calls know what to send:
@@ -66,7 +66,7 @@ It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Applicati
   "mcpServers": {
     "say": {
       "command": "npx",
-      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{speech # A concise message to say outloud}"]
     },
   }
 }
@@ -83,7 +83,7 @@ Add to your `~/.cursor/mcp.json` (in your home or project directory) or go to To
   "mcpServers": {
     "say": {
       "command": "npx",
-      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{{speech#say_outloud}}"]
+      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{speech#say_outloud}"]
     },
   }
 }
@@ -101,7 +101,7 @@ It's a lot of the same here. Don't get confused betwee studio and stdio (that's 
         "type": "stdio",
         "command": "npx",
 
-        "args": ["-y", "@studio-mcp/studio", "echo", "{{text#What do you want to say?}}"]
+        "args": ["-y", "@studio-mcp/studio", "echo", "{text#What do you want to say?}"]
       }
     }
   }
@@ -113,26 +113,28 @@ It's a lot of the same here. Don't get confused betwee studio and stdio (that's 
 Studio uses blueprints (templates) to keep your studio tidy.
 
 ```bash
-studio say -v "{{voice# Choose your Mac say voice}}" "[args...#Any additional args]"
+studio say -v "{voice# Choose your Mac say voice}" "[args...#Any additional args]"
 ```
 
 This creates a Studio server with two arguments: `voice` and `args`.
 Everything after the `#` will be used as the description for the LLM to understand.
 
-Blueprint templates are a modified mustache format with descriptions: `{{name # description}}` but they also add shell like optional `[--flag]` booleans, `[optional # an optional string]` and `[args... # array with 0 or more strings]` for additional args:
+Blueprint templates are a modified mustache format with descriptions: `{name # description}` but they also add shell like optional `[--flag]` booleans, `[optional # an optional string]` and `[args... # array with 0 or more strings]` for additional args:
 
-- `{{name}}`: Required string argument
+- `{name}`: Required string argument
 - `[name]`: Optional string argument
 - `[name...]`: Optional array argument (spreads as multiple command line args)
 - `[--flag]`: Optional boolean named `flag` that prints `--flag` only when true.
-- `{{name...}}`: Required array (1 or more arguments required).
+- `{name...}`: Required array (1 or more arguments required).
 
 Inside a tag, there is a name and description:
 
 - `name`: The argument name that will be shown in the MCP tool schema. Only letter numbers and underscores (dashes and underscores are interchangeable, case-insensitive).
 - `description`: A description of what the argument should contain. Reads everything after the `#` to the end of the template tag.
 
-#### What about {{cool_template_feature: string /[A-Z]+/ # Fancy tags}}?
+Note: Double curly braces `{{name}}` are still supported for backward compatibility, but single braces `{name}` are preferred and used throughout the docs.
+
+#### What about {cool_template_feature: string /[A-Z]+/ # Fancy tags}?
 
 This is a simple studio, not one of those fancy 1 bedroom flats.
 
@@ -145,7 +147,7 @@ To build and test locally:
 ```bash
 make
 make test
-studio echo "{{text # what you want said to you}}"
+studio echo "{text # what you want said to you}"
 ```
 
 ### Did something break?
