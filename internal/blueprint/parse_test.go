@@ -367,3 +367,101 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 		assert.Equal(t, expected, bp.ShellWords)
 	})
 }
+
+func TestBlueprint_SingleBraceTokenization(t *testing.T) {
+	t.Run("tokenizes command with single-brace required field", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{text}"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{FieldToken{Name: "text", Description: "", Required: true, OriginalFlag: ""}},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+		assert.Equal(t, "echo {{text}}", bp.GetCommandFormat())
+	})
+
+	t.Run("tokenizes command with single-brace and description", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{text#message to echo}"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{FieldToken{Name: "text", Description: "message to echo", Required: true, OriginalFlag: ""}},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+		assert.Equal(t, "echo {{text}}", bp.GetCommandFormat())
+	})
+
+	t.Run("tokenizes command with prefix and single-brace template", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "prefix{text#desc}"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{
+				TextToken{Value: "prefix"},
+				FieldToken{Name: "text", Description: "desc", Required: true, OriginalFlag: ""},
+			},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+		assert.Equal(t, "echo prefix{{text}}", bp.GetCommandFormat())
+	})
+
+	t.Run("tokenizes command with suffix and single-brace template", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{text#desc}suffix"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{
+				FieldToken{Name: "text", Description: "desc", Required: true, OriginalFlag: ""},
+				TextToken{Value: "suffix"},
+			},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+		assert.Equal(t, "echo {{text}}suffix", bp.GetCommandFormat())
+	})
+
+	t.Run("tokenizes command with mixed text and single-brace template", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "prefix{text#desc}suffix"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{
+				TextToken{Value: "prefix"},
+				FieldToken{Name: "text", Description: "desc", Required: true, OriginalFlag: ""},
+				TextToken{Value: "suffix"},
+			},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+		assert.Equal(t, "echo prefix{{text}}suffix", bp.GetCommandFormat())
+	})
+}
+
+func TestBlueprint_SingleBraceEnhancedTemplateProcessing(t *testing.T) {
+	t.Run("handles malformed single-brace template syntax", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{incomplete"})
+		require.NoError(t, err)
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "{incomplete"}, args)
+	})
+
+	t.Run("handles malformed single-brace with only closing brace", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "no_opening_brace}"})
+		require.NoError(t, err)
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "no_opening_brace}"}, args)
+	})
+
+	t.Run("handles empty single-brace template braces", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{}"})
+		require.NoError(t, err)
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "{}"}, args)
+	})
+}

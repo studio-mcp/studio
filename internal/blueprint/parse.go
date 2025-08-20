@@ -91,45 +91,60 @@ func tokenizeShellWord(word string) []Token {
 
 // templateMatch represents a found template in the text
 type templateMatch struct {
-	Start int
-	End   int
-	Type  string
+	Start        int
+	End          int
+	Type         string
+	EndMarker    string
+	MarkerLength int
 }
 
 // findNextTemplate finds the next template starting from the given position
 func findNextTemplate(word string, startPos int) *templateMatch {
 	remaining := word[startPos:]
 
-	requiredStart := strings.Index(remaining, "{{")
-	optionalStart := strings.Index(remaining, "[")
+	// Find possible starts
+	startDouble := strings.Index(remaining, "{{")
+	startSingle := strings.Index(remaining, "{")
+	startOptional := strings.Index(remaining, "[")
 
-	// Find the closest template start
-	var nextStart int
-	var templateType string
+	// If single coincides with double, prefer double
+	if startSingle != -1 && startDouble != -1 && startSingle == startDouble {
+		startSingle = -1
+	}
 
-	if requiredStart != -1 && (optionalStart == -1 || requiredStart < optionalStart) {
-		nextStart = requiredStart
-		templateType = "required"
-	} else if optionalStart != -1 {
-		nextStart = optionalStart
-		templateType = "optional"
-	} else {
+	// Choose earliest non -1 among double, single, optional
+	nextStart := -1
+	templateType := ""
+	endMarker := ""
+	markerLength := 0
+
+	candidates := []struct {
+		idx  int
+		typ  string
+		end string
+		len  int
+	}{
+		{startDouble, "required_double", "}}", 2},
+		{startSingle, "required_single", "}", 1},
+		{startOptional, "optional", "]", 1},
+	}
+
+	for _, c := range candidates {
+		if c.idx != -1 && (nextStart == -1 || c.idx < nextStart) {
+			nextStart = c.idx
+			templateType = c.typ
+			endMarker = c.end
+			markerLength = c.len
+		}
+	}
+
+	if nextStart == -1 {
 		return nil // No templates found
 	}
 
 	absoluteStart := startPos + nextStart
 
 	// Find template end
-	var endMarker string
-	var markerLength int
-	if templateType == "required" {
-		endMarker = "}}"
-		markerLength = 2
-	} else {
-		endMarker = "]"
-		markerLength = 1
-	}
-
 	endIndex := strings.Index(remaining[nextStart:], endMarker)
 	if endIndex == -1 {
 		// Malformed template - treat rest as text by returning no match
@@ -139,13 +154,15 @@ func findNextTemplate(word string, startPos int) *templateMatch {
 	absoluteEnd := absoluteStart + endIndex + markerLength
 
 	return &templateMatch{
-		Start: absoluteStart,
-		End:   absoluteEnd,
-		Type:  templateType,
+		Start:        absoluteStart,
+		End:          absoluteEnd,
+		Type:         templateType,
+		EndMarker:    endMarker,
+		MarkerLength: markerLength,
 	}
 }
 
-// parseField parses a field enclosed in {{ }} or [ ]
+// parseField parses a field enclosed in {{ }}, { } or [ ]
 func parseField(field string) Token {
 	var content string
 	var required bool
@@ -153,6 +170,9 @@ func parseField(field string) Token {
 	// Determine field type and extract content
 	if strings.HasPrefix(field, "{{") && strings.HasSuffix(field, "}}") {
 		content = field[2 : len(field)-2] // Remove {{ }}
+		required = true
+	} else if strings.HasPrefix(field, "{") && strings.HasSuffix(field, "}") {
+		content = field[1 : len(field)-1] // Remove { }
 		required = true
 	} else if strings.HasPrefix(field, "[") && strings.HasSuffix(field, "]") {
 		content = field[1 : len(field)-1] // Remove [ ]
@@ -170,7 +190,7 @@ func parseField(field string) Token {
 	parts := strings.SplitN(content, "#", 2)
 	name = strings.TrimSpace(parts[0])
 
-	// If name is empty, this is not a valid field (e.g., {{}})
+	// If name is empty, this is not a valid field (e.g., {{}} or {})
 	if name == "" {
 		return nil
 	}

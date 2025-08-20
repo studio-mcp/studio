@@ -467,3 +467,53 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 		assert.Contains(t, err.Error(), "missing required parameter")
 	})
 }
+
+func TestBlueprint_BuildCommandArgs_SingleBrace(t *testing.T) {
+	t.Run("builds command with single-brace required template", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{message}"})
+		require.NoError(t, err)
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"message": "Hello World",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "Hello World"}, args)
+	})
+
+	t.Run("builds command with single-brace in middle of arg", func(t *testing.T) {
+		bp, err := FromArgs([]string{"curl", "https://api.example.com/{endpoint}"})
+		require.NoError(t, err)
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"endpoint": "users/123",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"curl", "https://api.example.com/users/123"}, args)
+	})
+
+	t.Run("builds command with multiple single-brace templates in one arg", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{greeting} {name}!"})
+		require.NoError(t, err)
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"greeting": "Hello",
+			"name":     "World",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "Hello World!"}, args)
+	})
+
+	t.Run("builds command with single-brace required array", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{files...}"})
+		require.NoError(t, err)
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"files": []string{"a.txt", "b.txt"},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "a.txt", "b.txt"}, args)
+	})
+
+	t.Run("errors when single-brace required arg missing", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{text}"})
+		require.NoError(t, err)
+		_, err = bp.BuildCommandArgs(map[string]interface{}{})
+		assert.Error(t, err)
+	})
+}

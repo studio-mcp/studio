@@ -91,7 +91,7 @@ func parseArgs(args []string) (debugFlag bool, versionFlag bool, logFile string,
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "studio [--debug] [--log filename] [--] <command> --example \"{{req # required arg}}\" \"[args... # array of args]\"",
+	Use:   "studio [--debug] [--log filename] [--] <command> --example \"{req # required arg}\" \"[args... # array of args]\"",
 	Short: "A tool for running a single command MCP server",
 	Long: `studio is a tool for running a single command MCP server.
 
@@ -109,13 +109,13 @@ the command starts at the first non-flag argument:
 
 arguments can be templated as their own shellword or as part of a shellword:
 
-  "{{req # required arg}}" - tell the LLM about a required arg named 'req'.
+  "{req # required arg}" - tell the LLM about a required arg named 'req'.
   "[args... # array of args]" - tell the LLM about an optional array of args named 'args'.
   "[opt # optional string]" - a optional string arg named 'opt' (not in example).
-  "https://en.wikipedia.org/wiki/{{wiki_page_name}}" - an example partially templated words.
+  "https://en.wikipedia.org/wiki/{wiki_page_name}" - an example partially templated words.
 
 Example:
-  studio say -v siri "{{speech # a concise phrase to say outloud to the user}}"`,
+  studio say -v siri "{speech # a concise phrase to say outloud to the user}"`,
 	DisableFlagParsing: true, // Disable cobra's flag parsing so we can do custom parsing
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Custom argument parsing
@@ -133,7 +133,7 @@ Example:
 		}
 
 		if len(commandArgs) == 0 {
-			return fmt.Errorf("usage: studio <command> --example \"{{req # required arg}}\" \"[args... # array of args]\"")
+			return fmt.Errorf("usage: studio <command> --example \"{req # required arg}\" \"[args... # array of args]\"")
 		}
 		return nil
 	},
