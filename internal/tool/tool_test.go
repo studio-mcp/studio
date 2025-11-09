@@ -2,12 +2,13 @@ package tool
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 )
@@ -195,12 +196,18 @@ func TestTool_CreateToolFunction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := CreateToolFunction(tt.blueprint)
 
-			// Create MCP parameters
-			params := &mcp.CallToolParamsFor[map[string]any]{
-				Arguments: tt.args,
+			// Marshal arguments to JSON
+			argsJSON, err := json.Marshal(tt.args)
+			assert.NoError(t, err)
+
+			// Create MCP CallToolRequest
+			req := &mcp.CallToolRequest{
+				Params: &mcp.CallToolParamsRaw{
+					Arguments: argsJSON,
+				},
 			}
 
-			result, err := handler(context.Background(), nil, params)
+			result, err := handler(context.Background(), req)
 
 			assert.NoError(t, err)
 			assert.Len(t, result.Content, 1)

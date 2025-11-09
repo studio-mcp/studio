@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
+	"github.com/google/jsonschema-go/jsonschema"
 )
 
 // GenerateInputSchema creates a JSON schema from the tokenized shell words

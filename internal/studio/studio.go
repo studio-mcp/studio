@@ -56,15 +56,14 @@ func (s *Studio) Serve() error {
 // ServeWithContext starts the MCP server over stdio with a context
 func (s *Studio) ServeWithContext(ctx context.Context) error {
 	// Create server with version from build
-	server := mcp.NewServer("studio", s.Version, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "studio", Version: s.Version}, nil)
 
 	// Add the tool to the server using CreateServerTool from tool package
-	serverTool := tool.CreateServerTool(s.Blueprint)
-
-	server.AddTools(serverTool)
+	toolDef, toolHandler := tool.CreateServerTool(s.Blueprint)
+	server.AddTool(toolDef, toolHandler)
 
 	// Create base transport
-	var transport mcp.Transport = mcp.NewStdioTransport()
+	var transport mcp.Transport = &mcp.StdioTransport{}
 
 	// Wrap with logging transport if debug mode is enabled or log file is specified
 	if s.DebugMode || s.LogFile != "" {
@@ -82,7 +81,7 @@ func (s *Studio) ServeWithContext(ctx context.Context) error {
 			// Use stderr for transport logging when debug mode is enabled
 			logWriter = os.Stderr
 		}
-		transport = mcp.NewLoggingTransport(transport, logWriter)
+		transport = &mcp.LoggingTransport{Transport: transport, Writer: logWriter}
 	}
 
 	// Run the server with the configured transport

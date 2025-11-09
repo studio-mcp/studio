@@ -3,13 +3,14 @@ package tool
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -96,11 +97,19 @@ func Execute(command string, args ...string) (string, error) {
 }
 
 // CreateToolFunction creates a tool handler for the given blueprint
-func CreateToolFunction(blueprint Blueprint) mcp.ToolHandlerFor[map[string]any, map[string]any] {
-	return func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[map[string]any]) (*mcp.CallToolResultFor[map[string]any], error) {
-		debug("Tool called with args: %v", params.Arguments)
+func CreateToolFunction(blueprint Blueprint) mcp.ToolHandler {
+	return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Parse the arguments from raw JSON
+		var args map[string]any
+		if len(req.Params.Arguments) > 0 {
+			if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
+				return createToolResult(fmt.Sprintf("Validation error: %s", err.Error()), true), nil
+			}
+		}
 
-		fullCommand, err := blueprint.BuildCommandArgs(params.Arguments)
+		debug("Tool called with args: %v", args)
+
+		fullCommand, err := blueprint.BuildCommandArgs(args)
 		if err != nil {
 			return createToolResult(fmt.Sprintf("Validation error: %s", err.Error()), true), nil
 		}
@@ -124,7 +133,7 @@ func GenerateToolName(baseCommand string) string {
 }
 
 // CreateServerTool creates a complete MCP server tool from a blueprint
-func CreateServerTool(blueprint Blueprint) *mcp.ServerTool {
+func CreateServerTool(blueprint Blueprint) (*mcp.Tool, mcp.ToolHandler) {
 	schema, ok := blueprint.GetInputSchema().(*jsonschema.Schema)
 	if !ok {
 		// This should never happen if the Blueprint interface is implemented correctly
@@ -143,16 +152,17 @@ func CreateServerTool(blueprint Blueprint) *mcp.ServerTool {
 		debug("    required: %s", req)
 	}
 
-	return mcp.NewServerTool(
-		GenerateToolName(blueprint.GetBaseCommand()),
-		GetToolDescription(blueprint),
-		CreateToolFunction(blueprint),
-		mcp.Input(mcp.Schema(schema)),
-	)
+	tool := &mcp.Tool{
+		Name:        GenerateToolName(blueprint.GetBaseCommand()),
+		Description: GetToolDescription(blueprint),
+		InputSchema: schema,
+	}
+
+	return tool, CreateToolFunction(blueprint)
 }
 
-func createToolResult(output string, isError bool) *mcp.CallToolResultFor[map[string]any] {
-	return &mcp.CallToolResultFor[map[string]any]{
+func createToolResult(output string, isError bool) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: output},
 		},
