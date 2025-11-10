@@ -21,9 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.1] - 2025-06-28
 
 ### Added
+
 - Initial TypeScript port of `studio` from Ruby
 - MCP server implementation using @modelcontextprotocol/sdk
-- Blueprint templating
+- Templating
 - Support for required `{{name}}` and optional `[name]` string arguments
 - Support for array arguments `[name...]`
 - CLI interface compatible with Claude Desktop, Cursor, and other MCP clients

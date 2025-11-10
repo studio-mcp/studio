@@ -1,155 +1,167 @@
 # Studio MCP Release Process
 
-This document contains instructions for managing releases of the studio project, which uses a dual-publish system: Go binaries distributed via GitHub Releases and an npm wrapper package.
+This document describes the release process for studio, a TypeScript/npm package.
 
-## Architecture Overview
+## Overview
 
-The project maintains:
-- **Go codebase**: Main application in Go
-- **npm wrapper**: Downloads and executes appropriate binary for the platform
-- **Dual distribution**: Available via `go install`, `npm install`, and direct binary download
+Studio uses a tag-based release workflow:
 
-## Release Components
+- Push a git tag → GitHub Actions automatically builds, tests, and publishes to npm
+- No manual version bumping required
+- Single source of truth: git tags
 
-### 1. Version Management
-- `scripts/sync-version.sh`: Syncs package.json version with git tags
-- `package.json`: npm package metadata and version
-- Git tags: Source of truth for versions (format: `v1.2.3`)
+## Quick Release
 
-### 2. Build & Release
-- `.goreleaser.yml`: Cross-platform binary builds and GitHub releases
-- `.github/workflows/release.yml`: CI/CD pipeline for releases
-- `install.js`: Downloads platform-specific binary during npm install
-- `run.js`: Executes the downloaded binary
+Create the tag in the GitHub UI, or:
 
-## Release Process
-
-### Step 1: Prepare Release
 ```bash
-# Ensure you're on main branch with clean working directory
-git checkout main
-git pull origin main
-
-# Test that everything builds locally
-go build -o studio ./main.go
-./studio --version
-
-# Run tests if available
-go test ./...
+# Create and push tag (replace X.Y.Z with desired version)
+git tag -a v1.2.3 -m "Release v1.2.3"
+git push origin v1.2.3
 ```
 
-### Step 2: Version Bump
-```bash
-# Update version and create tag (replace X.Y.Z with desired version)
-./scripts/sync-version.sh X.Y.Z
+GitHub Actions will:
 
-# This script:
-# - Updates package.json version to X.Y.Z
-# - Creates git tag vX.Y.Z
-# - Shows next steps
+1. Extract version from tag
+2. Update package.json version
+3. Install dependencies
+4. Run all tests
+5. Build TypeScript → JavaScript
+6. Publish to npm with provenance
+7. Create GitHub release with notes
+
+## Detailed Release Process
+
+### Prerequisites
+
+- Clean working directory
+- All tests passing locally
+- On main branch (or release branch)
+
+### Step 1: Test Locally
+
+```bash
+# Run tests
+bun run test
+
+# Build
+bun run build
+
+# Verify binary works
+node dist/index.js --version
 ```
 
-### Step 3: Commit and Push
-```bash
-# Commit version changes
-git add package.json
-git commit -m "Bump version to X.Y.Z"
+### Step 2: Create and Push Tag
 
-# Push changes and tag
-git push origin main
-git push origin vX.Y.Z
+```bash
+# Create annotated tag
+git tag -a v1.2.3 -m "Release v1.2.3"
+
+# Push tag to trigger release
+git push origin v1.2.3
+
+# Or do both in one command
+git tag -a v1.2.3 -m "Release v1.2.3" && git push origin v1.2.3
 ```
 
-### Step 4: Automated Release
-The GitHub Actions workflow (`.github/workflows/release.yml`) automatically:
+### Step 3: Monitor Release
 
-1. **Triggers on tag push** (`v*` pattern)
-2. **Runs GoReleaser** which:
-   - Builds binaries for Linux, macOS, Windows (amd64/arm64)
-   - Creates GitHub release with archives
-   - Includes package.json and package-lock.json in release
-3. **Extracts individual binaries** for npm compatibility:
-   - `studio-linux` (from Linux archive)
-   - `studio-macos` (from Darwin archive)
-   - `studio-win.exe` (from Windows archive)
-4. **Publishes to npm** using NODE_AUTH_TOKEN
+GitHub Actions will automatically:
 
-### Step 5: Verify Release
+- Run CI tests
+- Build the package
+- Publish to npm
+- Create GitHub release
+
+Monitor progress at:
+
+- **GitHub Actions**: <https://github.com/studio-mcp/studio/actions>
+- **GitHub Releases**: <https://github.com/studio-mcp/studio/releases>
+- **npm Package**: <https://www.npmjs.com/package/@studio-mcp/studio>
+
+### Step 4: Verify Release
+
 ```bash
-# Check GitHub release was created
-open https://github.com/studio-mcp/studio/releases/latest
-
 # Test npm installation
 npm install -g @studio-mcp/studio@latest
 studio --version
 
-# Test Go installation
-go install github.com/studio-mcp/studio@latest
-studio --version
+# Or with npx
+npx @studio-mcp/studio@latest --version
 ```
 
-## Required Secrets
+## Trusted Publishing
 
-GitHub repository must have these secrets configured:
-- `NPM_TOKEN`: npm authentication token for publishing
+This project uses [trusted publishing](https://docs.npmjs.com/trusted-publishers).
 
-## Binary Naming Convention
+### One-time setup on npmjs.com
 
-- **GoReleaser creates**: `studio_Linux_x86_64.tar.gz`, `studio_Darwin_x86_64.tar.gz`, `studio_Windows_x86_64.zip`
-- **GitHub Actions extracts to**: `studio-linux`, `studio-macos`, `studio-win.exe`
-- **npm wrapper expects**: Platform-specific binaries with consistent naming
+1. Go to your package settings: <https://www.npmjs.com/package/@studio-mcp/studio/access>
+2. Find the "Trusted Publisher" section
+3. Click "GitHub Actions"
+4. Configure:
+   - **Organization or user**: `studio-mcp`
+   - **Repository**: `studio`
+   - **Workflow filename**: `release.yml`
+   - **Environment name**: `release`
+5. Click "Add Trusted Publisher"
 
-## Troubleshooting
+## Rollback
 
-### Release Failed
-- Check GitHub Actions logs for specific errors
-- Ensure all required secrets are set
-- Verify goreleaser configuration: `goreleaser check`
-
-### npm Package Issues
-- Binary naming must match between install.js and GitHub releases
-- Ensure package.json files array includes necessary files
-- Check Node.js version compatibility in engines field
-
-### Version Sync Issues
-- Ensure sync-version.sh is executable: `chmod +x scripts/sync-version.sh`
-- Git tags must follow `v*` pattern for workflow trigger
-- package.json version should not include 'v' prefix
-
-## Manual Release
-
-If automated release fails:
+If a release has issues:
 
 ```bash
-# Build and release manually with goreleaser
-goreleaser release --clean
+# Deprecate the problematic version on npm
+npm deprecate @studio-mcp/studio@X.Y.Z "Reason for deprecation"
 
-# Publish npm package manually
-npm publish
+# Publish a patch release
+git tag vX.Y.Z+1
+git push origin vX.Y.Z+1
 ```
 
-## Testing Before Release
+### Dry run (test without publishing)
+
+Test locally before releasing:
 
 ```bash
-# Test goreleaser configuration
-goreleaser check
+# Install dependencies
+bun install
 
-# Test version sync script
-./scripts/sync-version.sh
+# Run tests
+bun run test
 
-# Build locally to verify
-go build -o studio ./main.go
-./studio --version
+# Build
+bun run build
+
+# Preview what would be published
+npm pack --dry-run
+
+# Or create a tarball to inspect
+npm pack
+tar -tzf studio-mcp-studio-*.tgz
 ```
 
-## File Responsibilities
+## Development
 
-- `main.go`: Entry point, version info
-- `cmd/root.go`: CLI implementation
-- `internal/`: Core application logic
-- `scripts/sync-version.sh`: Version management
-- `.goreleaser.yml`: Build and release configuration
-- `.github/workflows/release.yml`: CI/CD pipeline
-- `package.json`: npm package definition
-- `install.js`: Binary download logic
-- `run.js`: Binary execution wrapper
+### Local builds
+
+```bash
+# Build
+bun run build
+
+# Watch mode
+bun run test:watch
+
+# Development mode (runs source directly)
+bun run dev echo "{{text}}"
+```
+
+### Testing with MCP Inspector
+
+```bash
+# List tools
+bun run inspector:echo
+
+# Test git command
+bun run inspector:git
+```

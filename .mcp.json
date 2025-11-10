@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "say": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "run",
+        "dev",
+        "--debug",
+        "--log",
+        "./say.log",
+        "say",
+        "-v",
+        "siri",
+        "{speech # the short phrase to say outloud to the user}"
+      ],
+      "env": {}
+    }
+  }
+}

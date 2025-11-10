@@ -6,77 +6,70 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
-  packages: write
-  id-token: write
+  id-token: write  # Required for trusted publishing (OIDC)
+  contents: write  # Required for creating GitHub releases
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
-      version: ${{ steps.tag.outputs.version }}
+    environment: release
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Get tag and version
-        id: tag
+      - name: Get version from tag
+        id: version
         run: |
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing version: $VERSION"
 
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: oven-sh/setup-bun@v2
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          bun-version: latest
 
-  publish-npm:
-    needs: goreleaser
-    runs-on: ubuntu-latest
-    environment: release
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Update package.json version
         run: |
-          VERSION="${{ needs.goreleaser.outputs.version }}"
-          echo "Updating package.json version to: $VERSION"
-          npm version $VERSION --no-git-tag-version
+          echo "Updating package.json to version ${{ steps.version.outputs.version }}"
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+          cat package.json | grep version
 
-      - name: Create binary placeholder
+      - name: Run tests
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+      - name: Verify build output
         run: |
-          # Remove any existing binary (from GoReleaser or local builds)
-          rm -f bin/studio
-          mkdir -p bin
-          touch bin/studio
-          echo "Created zero-byte placeholder:"
-          ls -la bin/
+          ls -la dist/
+          node dist/index.js --version
 
-      - name: Install dependencies
-        run: npm ci
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
 
-      - name: Verify package contents before publish
-        run: |
-          ls -la bin/
-          npm pack --dry-run
+      - name: Ensure npm 11.5.1+ for trusted publishing
+        run: npm install -g npm@latest
 
-      - name: Publish to NPM
-        run: npm publish --provenance --registry https://registry.npmjs.org --access public
+      - name: Publish to npm
+        run: npm publish --access public
+        # Provenance is automatic with trusted publishing (OIDC)
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

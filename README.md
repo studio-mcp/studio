@@ -17,7 +17,7 @@ The tool turns everything after `studio` command into an MCP tool that can be ca
 It uses a very simple Mustache-like template syntax to provide inputs and descriptions telling the LLM how to use your command.
 
 ```sh
-$ npx -y @studio-mcp/studio command "{ required_argument # Description of argument }" "[optional_args... # any array of arguments]"
+npx -y @studio-mcp/studio command "{ required_argument # Description of argument }" "[optional_args... # any array of arguments]"
 ```
 
 `studio` turns this into an input schema for the MCP tool so that tool calls know what to send:
@@ -26,8 +26,15 @@ $ npx -y @studio-mcp/studio command "{ required_argument # Description of argume
 {
   "type": "object",
   "properties": {
-    "required_argument": { "type": "string", "description": "Description of argument" },
-    "optional_args": { "type": "array", "items": { "type": "string" }, "description": "any array of arguments" }
+    "required_argument": {
+      "type": "string",
+      "description": "Description of argument"
+    },
+    "optional_args": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "any array of arguments"
+    }
   },
   "required": ["required_argument"]
 }
@@ -66,8 +73,15 @@ It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Applicati
   "mcpServers": {
     "say": {
       "command": "npx",
-      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{speech # A concise message to say outloud}"]
-    },
+      "args": [
+        "-y",
+        "@studio-mcp/studio",
+        "say",
+        "-v",
+        "siri",
+        "{speech # A concise message to say outloud}"
+      ]
+    }
   }
 }
 ```
@@ -76,15 +90,22 @@ It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Applicati
 
 Add to your `~/.cursor/mcp.json` (in your home or project directory) or go to Tools section of the Cursor UI.
 
-*Note:* A bug in Cursor breaks args with spaces.
+_Note:_ A bug in Cursor breaks args with spaces.
 
 ```json
 {
   "mcpServers": {
     "say": {
       "command": "npx",
-      "args": ["-y", "@studio-mcp/studio", "say", "-v", "siri", "{speech#say_outloud}"]
-    },
+      "args": [
+        "-y",
+        "@studio-mcp/studio",
+        "say",
+        "-v",
+        "siri",
+        "{speech#say_outloud}"
+      ]
+    }
   }
 }
 ```
@@ -101,16 +122,21 @@ It's a lot of the same here. Don't get confused betwee studio and stdio (that's 
         "type": "stdio",
         "command": "npx",
 
-        "args": ["-y", "@studio-mcp/studio", "echo", "{text#What do you want to say?}"]
+        "args": [
+          "-y",
+          "@studio-mcp/studio",
+          "echo",
+          "{text#What do you want to say?}"
+        ]
       }
     }
   }
 }
 ```
 
-## Blueprint Syntax
+## Template Syntax
 
-Studio uses blueprints (templates) to keep your studio tidy.
+Studio uses templates to keep your studio tidy.
 
 ```bash
 studio say -v "{voice# Choose your Mac say voice}" "[args...#Any additional args]"
@@ -119,7 +145,7 @@ studio say -v "{voice# Choose your Mac say voice}" "[args...#Any additional args
 This creates a Studio server with two arguments: `voice` and `args`.
 Everything after the `#` will be used as the description for the LLM to understand.
 
-Blueprint templates are a modified mustache format with descriptions: `{name # description}` but they also add shell like optional `[--flag]` booleans, `[optional # an optional string]` and `[args... # array with 0 or more strings]` for additional args:
+Studio templates are a modified mustache format with descriptions: `{name # description}` but they also add shell like optional `[--flag]` booleans, `[optional # an optional string]` and `[args... # array with 0 or more strings]` for additional args:
 
 - `{name}`: Required string argument
 - `[name]`: Optional string argument
@@ -165,7 +191,7 @@ Uncovered portions are tenant's responsibility. (no one appreciates how hard it 
 
 This is your studio too. Bugs, bedbugs, features, ideas? Swing by the repo during open-house:
 
-🏠 https://github.com/studio-mcp/studio
+🏠 <https://github.com/studio-mcp/studio>
 
 ## Lease Terms: MIT
 
