@@ -2,15 +2,19 @@
   "name": "@studio-mcp/studio",
   "version": "0.0.0",
   "description": "One word MCP for any CLI command",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "type": "module",
   "bin": {
-    "studio": "./bin/studio"
+    "studio": "./dist/index.js"
   },
   "scripts": {
-    "postinstall": "node scripts/postinstall.js",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "tsx src/index.ts",
     "inspector": "npx @modelcontextprotocol/inspector",
-    "inspector:echo": "npx @modelcontextprotocol/inspector --cli bin/studio echo '{{text#message to echo}}' --method tools/list",
-    "inspector:git": "npx @modelcontextprotocol/inspector --cli bin/studio git '[args...]' --method tools/list"
+    "inspector:echo": "npx @modelcontextprotocol/inspector --cli dist/index.js echo '{{text#message to echo}}' --method tools/list",
+    "inspector:git": "npx @modelcontextprotocol/inspector --cli dist/index.js git '[args...]' --method tools/list"
   },
   "keywords": [
     "mcp",
@@ -24,15 +28,18 @@
   "homepage": "https://github.com/studio-mcp/studio",
   "repository": "studio-mcp/studio",
   "files": [
-    "scripts/",
+    "dist/",
     "README.md",
     "LICENSE"
   ],
-  "type": "module",
   "dependencies": {
-    "bin-links": "^5.0.0",
-    "https-proxy-agent": "^7.0.2",
-    "node-fetch": "^3.3.2",
-    "tar": "7.4.3"
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }
