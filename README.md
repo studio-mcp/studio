@@ -49,13 +49,11 @@ Since you're just renting the place, please be a good tenant and don't `rm -rf` 
 These install instructions are like my lease agreement: full of gotchas.
 Have your lawyer read it over. (You do have a lawyer right?)
 
-You can install to your system with `npm`, use `npx` directly, or install with `go install github.com/studio-mcp/studio@latest`
+You can install to your system with `npm` or use `npx` directly.
 
 ```sh
 npm install -g @studio-mcp/studio
 ```
-
-Or download directly from [GitHub Releases](https://github.com/studio-mcp/studio/releases/latest) and add to your PATH yourself.
 
 ## Unpack (it's an apartment metaphor)
 

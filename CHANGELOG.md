@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -
 
+## [0.3.0]
+
+- Switch to typescript for faster install, rather than downloading a binary after install
+
 ## [0.2.0]
 
 - Support single curly braces `{name}` for required fields to simplify templating

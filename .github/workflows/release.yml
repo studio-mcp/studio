@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
-  id-token: write  # Required for trusted publishing (OIDC)
-  contents: write  # Required for creating GitHub releases
+  id-token: write # Required for trusted publishing (OIDC)
+  contents: write # Required for creating GitHub releases
 
 jobs:
   release:
@@ -53,8 +53,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Ensure npm 11.5.1+ for trusted publishing
         run: npm install -g npm@latest
