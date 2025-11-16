@@ -87,9 +87,21 @@ describe("MCP Inspector Smoke Test", () => {
       };
     } catch (error: any) {
       // execFile throws on non-zero exit, but we want to return the output
+      const stdout = error.stdout || "";
+      const stderr = error.stderr || "";
+
+      // Log error details for debugging
+      if (process.env.CI || process.env.DEBUG) {
+        console.error("Inspector command failed:");
+        console.error("  Command:", "npx", fullArgs.join(" "));
+        console.error("  Error:", error.message);
+        console.error("  Stdout:", stdout);
+        console.error("  Stderr:", stderr);
+      }
+
       return {
-        stdout: error.stdout || "",
-        stderr: error.stderr || "",
+        stdout,
+        stderr,
       };
     }
   }
