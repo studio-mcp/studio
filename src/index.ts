@@ -9,6 +9,12 @@ import { fileURLToPath } from "url";
 import { fromArgs } from "./studio/parse.js";
 import { generateInputSchema, type Schema } from "./studio/schema.js";
 import { buildCommandArgs } from "./studio/render.js";
+import {
+  loadConfig,
+  filterCommands,
+  getDefaultConfigPath,
+  type StudioConfig,
+} from "./studio/config.js";
 
 // Read version from package.json
 const __filename = fileURLToPath(import.meta.url);
@@ -24,12 +30,16 @@ function parseArgs(args: string[]): {
   debug: boolean;
   version: boolean;
   logFile: string;
+  configPath: string;
+  commandsFilter: string[];
   commandArgs: string[];
 } {
   let i = 0;
   let debug = false;
   let version = false;
   let logFile = "";
+  let configPath = "";
+  const commandsFilter: string[] = [];
   const commandArgs: string[] = [];
 
   // Parse studio flags until we hit a non-flag or --
@@ -66,17 +76,47 @@ function parseArgs(args: string[]): {
         }
         logFile = args[i];
         break;
+      case "--config":
+        // Check if we have a next argument for the config path
+        if (i + 1 >= args.length) {
+          throw new Error("--config requires a path argument");
+        }
+        i++;
+        // Check if the next argument is another flag
+        if (args[i].startsWith("-")) {
+          throw new Error("--config requires a path argument");
+        }
+        configPath = args[i];
+        break;
+      case "--commands":
+        // Check if we have a next argument for the commands list
+        if (i + 1 >= args.length) {
+          throw new Error("--commands requires a comma-separated list");
+        }
+        i++;
+        // Check if the next argument is another flag
+        if (args[i].startsWith("-")) {
+          throw new Error("--commands requires a comma-separated list");
+        }
+        commandsFilter.push(
+          ...args[i].split(",").map((s) => s.trim()).filter((s) => s.length > 0),
+        );
+        break;
       case "-h":
       case "--help":
         console.log(`studio - One word MCP for any CLI command
 
-Usage: studio [--debug] [--log filename] [--] <command> [args...]
+Usage:
+  studio [--debug] [--log filename] [--] <command> [args...]
+  studio [--debug] [--log filename] [--config <path>] [--commands <list>]
 
 Options:
   -h, --help            Show this help message and exit
   --version             Show version information and exit
   --debug               Print debug logs to stderr
   --log <filename>      Write debug logs to specified file
+  --config <path>       Load commands from config file (default: ~/.config/studio/config.jsonc)
+  --commands <list>     Comma-separated list of commands to load from config
   --                    End flag parsing, treat rest as command
 
 Template Syntax:
@@ -88,9 +128,19 @@ Template Syntax:
   {name#description}    Argument with description
   [-f]                  Boolean flag (optional)
 
-Example:
+Config File Format (.config/studio/config.jsonc):
+  {
+    "echo": {
+      "description": "Run the echo command",  // optional
+      "command": ["echo", "Hello World"]      // required
+    }
+  }
+
+Examples:
   studio echo "{text#message to echo}"
   studio git "[args...]"
+  studio --config myconfig.jsonc
+  studio --commands "echo,git"
 `);
         process.exit(0);
         break;
@@ -104,7 +154,7 @@ Example:
   // Everything from i onwards goes to command template parsing
   commandArgs.push(...args.slice(i));
 
-  return { debug, version, logFile, commandArgs };
+  return { debug, version, logFile, configPath, commandsFilter, commandArgs };
 }
 
 /**
@@ -173,13 +223,66 @@ async function execute(command: string, args: string[]): Promise<string> {
 }
 
 /**
+ * Register a config-based command as an MCP tool
+ */
+function registerConfigCommand(
+  server: McpServer,
+  name: string,
+  config: { description?: string; command: string[] },
+  debug: boolean,
+) {
+  const toolName = name.replace(/-/g, "_");
+  const toolDescription =
+    config.description || `Run the command: ${config.command.join(" ")}`;
+
+  server.registerTool(
+    toolName,
+    {
+      title: name,
+      description: toolDescription,
+      inputSchema: {}, // No parameters for config commands
+    },
+    async () => {
+      try {
+        if (debug) {
+          console.error(`[Studio MCP] Executing: ${config.command.join(" ")}`);
+        }
+
+        const output = await execute(config.command[0], config.command.slice(1));
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: output,
+            },
+          ],
+        };
+      } catch (err: any) {
+        const errorMsg = err.message || String(err);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: errorMsg,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+}
+
+/**
  * Main function
  */
 async function main() {
   const args = process.argv.slice(2);
 
   try {
-    const { debug, version, logFile, commandArgs } = parseArgs(args);
+    const { debug, version, logFile, configPath, commandsFilter, commandArgs } =
+      parseArgs(args);
 
     // Handle version flag
     if (version) {
@@ -189,71 +292,106 @@ async function main() {
       return;
     }
 
-    // Validate command args
-    if (commandArgs.length === 0) {
-      console.error(
-        'usage: studio <command> --example "{{req # required arg}}" "[args... # array of args]"',
-      );
-      process.exit(1);
-    }
-
-    // Create template
-    const template = fromArgs(commandArgs);
-    const inputSchema = generateInputSchema(template);
-    const zodSchema = schemaToZod(inputSchema);
-
     // Create MCP server
     const server = new McpServer({
       name: "studio",
       version: VERSION,
     });
 
-    // Generate tool name from base command
-    const toolName = template.baseCommand.replace(/-/g, "_");
-    const toolDescription = `Run the shell command \`${template.getCommandFormat()}\``;
+    // Determine if we're in config mode
+    const useConfigMode = configPath || commandsFilter.length > 0 || commandArgs.length === 0;
 
-    // Register tool
-    server.registerTool(
-      toolName,
-      {
-        title: template.baseCommand,
-        description: toolDescription,
-        inputSchema: zodSchema,
-      },
-      async (params: any) => {
-        try {
-          // Build command args
-          const fullCommand = buildCommandArgs(template, params);
+    if (useConfigMode) {
+      // Config mode: load commands from config file
+      const actualConfigPath = configPath || getDefaultConfigPath();
 
-          if (debug) {
-            console.error(`[Studio MCP] Executing: ${fullCommand.join(" ")}`);
-          }
+      if (debug) {
+        console.error(`[Studio MCP] Loading config from: ${actualConfigPath}`);
+      }
 
-          // Execute command
-          const output = await execute(fullCommand[0], fullCommand.slice(1));
-
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: output,
-              },
-            ],
-          };
-        } catch (err: any) {
-          const errorMsg = err.message || String(err);
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: errorMsg,
-              },
-            ],
-            isError: true,
-          };
+      let config: StudioConfig;
+      try {
+        config = loadConfig(actualConfigPath);
+      } catch (err: any) {
+        if (!configPath && commandsFilter.length === 0 && commandArgs.length === 0) {
+          // No config file found and no explicit config requested
+          console.error(
+            'usage: studio <command> --example "{{req # required arg}}" "[args... # array of args]"',
+          );
+          console.error(`\nOr create a config file at: ${actualConfigPath}`);
+          process.exit(1);
         }
-      },
-    );
+        throw err;
+      }
+
+      // Filter commands if specified
+      if (commandsFilter.length > 0) {
+        config = filterCommands(config, commandsFilter);
+      }
+
+      // Register all commands from config
+      for (const [name, cmdConfig] of Object.entries(config)) {
+        registerConfigCommand(server, name, cmdConfig, debug);
+      }
+
+      if (debug) {
+        console.error(
+          `[Studio MCP] Registered ${Object.keys(config).length} command(s) from config`,
+        );
+      }
+    } else {
+      // Template mode: single command from args
+      const template = fromArgs(commandArgs);
+      const inputSchema = generateInputSchema(template);
+      const zodSchema = schemaToZod(inputSchema);
+
+      // Generate tool name from base command
+      const toolName = template.baseCommand.replace(/-/g, "_");
+      const toolDescription = `Run the shell command \`${template.getCommandFormat()}\``;
+
+      // Register tool
+      server.registerTool(
+        toolName,
+        {
+          title: template.baseCommand,
+          description: toolDescription,
+          inputSchema: zodSchema,
+        },
+        async (params: any) => {
+          try {
+            // Build command args
+            const fullCommand = buildCommandArgs(template, params);
+
+            if (debug) {
+              console.error(`[Studio MCP] Executing: ${fullCommand.join(" ")}`);
+            }
+
+            // Execute command
+            const output = await execute(fullCommand[0], fullCommand.slice(1));
+
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: output,
+                },
+              ],
+            };
+          } catch (err: any) {
+            const errorMsg = err.message || String(err);
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: errorMsg,
+                },
+              ],
+              isError: true,
+            };
+          }
+        },
+      );
+    }
 
     // Create transport
     const transport = new StdioServerTransport();
