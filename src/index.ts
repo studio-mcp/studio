@@ -24,12 +24,14 @@ function parseArgs(args: string[]): {
   debug: boolean;
   version: boolean;
   logFile: string;
+  envVars: Record<string, string>;
   commandArgs: string[];
 } {
   let i = 0;
   let debug = false;
   let version = false;
   let logFile = "";
+  const envVars: Record<string, string> = {};
   const commandArgs: string[] = [];
 
   // Parse studio flags until we hit a non-flag or --
@@ -66,17 +68,38 @@ function parseArgs(args: string[]): {
         }
         logFile = args[i];
         break;
+      case "-e":
+      case "--env":
+        // Check if we have a next argument for the env var
+        if (i + 1 >= args.length) {
+          throw new Error(`${arg} requires an environment variable in KEY=VALUE format`);
+        }
+        i++;
+        const envArg = args[i];
+        // Parse KEY=VALUE format
+        const eqIndex = envArg.indexOf("=");
+        if (eqIndex === -1) {
+          throw new Error(`${arg} requires an environment variable in KEY=VALUE format, got: ${envArg}`);
+        }
+        const key = envArg.substring(0, eqIndex);
+        const value = envArg.substring(eqIndex + 1);
+        if (!key) {
+          throw new Error(`${arg} requires a non-empty key in KEY=VALUE format`);
+        }
+        envVars[key] = value;
+        break;
       case "-h":
       case "--help":
         console.log(`studio - One word MCP for any CLI command
 
-Usage: studio [--debug] [--log filename] [--] <command> [args...]
+Usage: studio [--debug] [--log filename] [-e KEY=VALUE] [--] <command> [args...]
 
 Options:
   -h, --help            Show this help message and exit
   --version             Show version information and exit
   --debug               Print debug logs to stderr
   --log <filename>      Write debug logs to specified file
+  -e, --env KEY=VALUE   Set environment variable for command (can be used multiple times)
   --                    End flag parsing, treat rest as command
 
 Template Syntax:
@@ -104,7 +127,7 @@ Example:
   // Everything from i onwards goes to command template parsing
   commandArgs.push(...args.slice(i));
 
-  return { debug, version, logFile, commandArgs };
+  return { debug, version, logFile, envVars, commandArgs };
 }
 
 /**
@@ -143,9 +166,24 @@ function schemaToZod(schema: Schema) {
 /**
  * Executes a command
  */
-async function execute(command: string, args: string[]): Promise<string> {
+async function execute(
+  command: string,
+  args: string[],
+  envVars: Record<string, string> = {},
+): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(command, args);
+    // Prepare environment variables
+    const env = { ...process.env, ...envVars };
+
+    // Handle PWD special case
+    let cwd: string | undefined = undefined;
+    if (envVars.PWD) {
+      cwd = envVars.PWD;
+      // Remove PWD from env since we're setting it via cwd option
+      delete env.PWD;
+    }
+
+    const proc = spawn(command, args, { env, cwd });
     let stdout = "";
     let stderr = "";
 
@@ -179,7 +217,7 @@ async function main() {
   const args = process.argv.slice(2);
 
   try {
-    const { debug, version, logFile, commandArgs } = parseArgs(args);
+    const { debug, version, logFile, envVars, commandArgs } = parseArgs(args);
 
     // Handle version flag
     if (version) {
@@ -230,7 +268,7 @@ async function main() {
           }
 
           // Execute command
-          const output = await execute(fullCommand[0], fullCommand.slice(1));
+          const output = await execute(fullCommand[0], fullCommand.slice(1), envVars);
 
           return {
             content: [
