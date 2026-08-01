@@ -10,6 +10,8 @@ Make any CLI into an AI tool with `studio` MCP server.
 
 `studio` is the simplest possible way to add CLI tools that your AI Agent can use right now. Built on the [Model Context Protocol](https://modelcontextprotocol.io/), `studio` spawns a single tool mcp server with your command.
 
+It speaks the [2026-07-28 MCP specification](https://modelcontextprotocol.io/specification/2026-07-28) and still answers 2025-era clients, so it works with whatever your agent happens to speak.
+
 The tool turns everything after `studio` command into an MCP tool that can be called by Cursor, Claude, etc.
 
 `studio` is great for patching CLIs into Claude, debugging MCPs or providing custom scripts to your LLM without having to deal with MCP.
@@ -49,7 +51,7 @@ Since you're just renting the place, please be a good tenant and don't `rm -rf` 
 These install instructions are like my lease agreement: full of gotchas.
 Have your lawyer read it over. (You do have a lawyer right?)
 
-You can install to your system with `npm` or use `npx` directly.
+You can install to your system with `npm` or use `npx` directly. Node.js 20 or newer, please — the super won't come out for anything older.
 
 ```sh
 npm install -g @studio-mcp/studio

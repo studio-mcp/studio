@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
+import { McpServer } from "@modelcontextprotocol/server";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
+import * as z from "zod";
 import { spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
@@ -16,6 +16,9 @@ const __dirname = path.dirname(__filename);
 const packageJsonPath = path.join(__dirname, "..", "package.json");
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 const VERSION = packageJson.version;
+
+// How long clients may cache the tool list (2026-07-28 `ttlMs`).
+const TOOL_LIST_TTL_MS = 60 * 60 * 1000;
 
 /**
  * Parses command line arguments
@@ -108,13 +111,16 @@ Example:
 }
 
 /**
- * Converts a JSON schema to Zod schema
+ * Converts a JSON schema to a Zod object schema.
+ *
+ * The SDK advertises tools with the Standard Schema JSON conversion, so the
+ * shape has to be handed over as a schema object rather than a raw shape.
  */
-function schemaToZod(schema: Schema) {
-  const shape: Record<string, z.ZodTypeAny> = {};
+function schemaToZod(schema: Schema): z.ZodObject {
+  const shape: Record<string, z.ZodType> = {};
 
   for (const [key, prop] of Object.entries(schema.properties || {})) {
-    let fieldSchema: z.ZodTypeAny;
+    let fieldSchema: z.ZodType;
 
     if (prop.type === "array") {
       fieldSchema = z.array(z.string());
@@ -137,7 +143,7 @@ function schemaToZod(schema: Schema) {
     shape[key] = fieldSchema;
   }
 
-  return shape;
+  return z.object(shape);
 }
 
 /**
@@ -202,64 +208,114 @@ async function main() {
     const inputSchema = generateInputSchema(template);
     const zodSchema = schemaToZod(inputSchema);
 
-    // Create MCP server
-    const server = new McpServer({
-      name: "studio",
-      version: VERSION,
-    });
-
     // Generate tool name from base command
     const toolName = template.baseCommand.replace(/-/g, "_");
     const toolDescription = `Run the shell command \`${template.getCommandFormat()}\``;
 
-    // Register tool
-    server.registerTool(
-      toolName,
-      {
-        title: template.baseCommand,
-        description: toolDescription,
-        inputSchema: zodSchema,
+    // Serve over stdio. The factory builds one server per connection, and
+    // serveStdio picks the protocol era from the opening message, so 2025-era
+    // clients keep working against the same registration.
+    const handle = serveStdio(
+      () => {
+        const server = new McpServer(
+          {
+            name: "studio",
+            title: `studio ${template.baseCommand}`,
+            version: VERSION,
+            description: toolDescription,
+            websiteUrl: "https://github.com/studio-mcp/studio",
+          },
+          {
+            // The tool list is fixed by the command line studio was started
+            // with, so it can never change while the process is alive. It
+            // stays `private` because a different studio process serves a
+            // different command under the same server name.
+            cacheHints: {
+              "tools/list": { ttlMs: TOOL_LIST_TTL_MS, cacheScope: "private" },
+              "server/discover": {
+                ttlMs: TOOL_LIST_TTL_MS,
+                cacheScope: "private",
+              },
+            },
+          },
+        );
+
+        // Register tool
+        server.registerTool(
+          toolName,
+          {
+            title: template.baseCommand,
+            description: toolDescription,
+            inputSchema: zodSchema,
+            annotations: {
+              // studio runs whatever command it was handed, so assume the
+              // worst about what that command does to the environment.
+              readOnlyHint: false,
+              destructiveHint: true,
+              idempotentHint: false,
+              openWorldHint: true,
+            },
+          },
+          async (params) => {
+            try {
+              // Build command args
+              const fullCommand = buildCommandArgs(
+                template,
+                params as Record<string, any>,
+              );
+
+              if (debug) {
+                console.error(
+                  `[Studio MCP] Executing: ${fullCommand.join(" ")}`,
+                );
+              }
+
+              // Execute command
+              const output = await execute(
+                fullCommand[0],
+                fullCommand.slice(1),
+              );
+
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: output,
+                  },
+                ],
+              };
+            } catch (err: any) {
+              const errorMsg = err.message || String(err);
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: errorMsg,
+                  },
+                ],
+                isError: true,
+              };
+            }
+          },
+        );
+
+        return server;
       },
-      async (params: any) => {
-        try {
-          // Build command args
-          const fullCommand = buildCommandArgs(template, params);
-
+      {
+        // stdout belongs to JSON-RPC, so out-of-band errors go to stderr.
+        onerror: (err) => {
           if (debug) {
-            console.error(`[Studio MCP] Executing: ${fullCommand.join(" ")}`);
+            console.error(`[Studio MCP] ${err.message}`);
           }
-
-          // Execute command
-          const output = await execute(fullCommand[0], fullCommand.slice(1));
-
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: output,
-              },
-            ],
-          };
-        } catch (err: any) {
-          const errorMsg = err.message || String(err);
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: errorMsg,
-              },
-            ],
-            isError: true,
-          };
-        }
+        },
       },
     );
 
-    // Create transport
-    const transport = new StdioServerTransport();
-
-    // Connect server to transport
-    await server.connect(transport);
+    for (const signal of ["SIGINT", "SIGTERM"] as const) {
+      process.once(signal, () => {
+        void handle.close().finally(() => process.exit(0));
+      });
+    }
 
     if (debug) {
       console.error("[Studio MCP] Server started and listening");

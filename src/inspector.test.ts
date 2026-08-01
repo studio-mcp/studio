@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { execFile, exec } from "child_process";
 import { promisify } from "util";
+import * as os from "os";
 import * as path from "path";
 import * as fs from "fs/promises";
+import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 
 const execFileAsync = promisify(execFile);
@@ -68,11 +70,47 @@ describe("MCP Inspector Smoke Test", () => {
     await fs.access(binaryPath);
   }, 30000);
 
+  /**
+   * Runs the inspector CLI against studio started with `serverArgs`.
+   *
+   * The server command goes through a config file rather than an inline
+   * target: the inspector's own option parser swallows flag-like tokens
+   * (`-v siri`) out of an inline target command, which studio needs to
+   * receive verbatim.
+   */
   async function runInspectorCmd(
-    args: string[],
+    serverArgs: string[],
+    inspectorArgs: string[],
   ): Promise<{ stdout: string; stderr: string }> {
-    const fullArgs = ["--yes", ...args];
     const projectRoot = path.join(__dirname, "..");
+    const configPath = path.join(
+      os.tmpdir(),
+      `studio-inspector-${randomUUID()}.json`,
+    );
+
+    await fs.writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          studio: {
+            type: "stdio",
+            command: process.execPath,
+            args: [binaryPath, ...serverArgs],
+          },
+        },
+      }),
+    );
+
+    const fullArgs = [
+      "--yes",
+      "@modelcontextprotocol/inspector",
+      "--cli",
+      "--config",
+      configPath,
+      "--server",
+      "studio",
+      ...inspectorArgs,
+    ];
 
     try {
       const result = await execFileAsync("npx", fullArgs, {
@@ -94,6 +132,7 @@ describe("MCP Inspector Smoke Test", () => {
       if (process.env.CI || process.env.DEBUG) {
         console.error("Inspector command failed:");
         console.error("  Command:", "npx", fullArgs.join(" "));
+        console.error("  Server:", serverArgs.join(" "));
         console.error("  Error:", error.message);
         console.error("  Stdout:", stdout);
         console.error("  Stderr:", stderr);
@@ -103,22 +142,17 @@ describe("MCP Inspector Smoke Test", () => {
         stdout,
         stderr,
       };
+    } finally {
+      await fs.rm(configPath, { force: true });
     }
   }
 
   describe("BasicInspectorConnection", () => {
     it("can list simple echo tools", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "echo",
-        "hello",
-        "--method",
-        "tools/list",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["echo", "hello"],
+        ["--method", "tools/list"],
+      );
 
       // Parse JSON response
       const response: InspectorToolsListResponse = JSON.parse(stdout);
@@ -139,18 +173,10 @@ describe("MCP Inspector Smoke Test", () => {
     }, 10000);
 
     it("can list echo tools with args", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "echo",
-        "hello",
-        "[args...]",
-        "--method",
-        "tools/list",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["echo", "hello", "[args...]"],
+        ["--method", "tools/list"],
+      );
 
       // Parse JSON response
       const response: InspectorToolsListResponse = JSON.parse(stdout);
@@ -176,19 +202,10 @@ describe("MCP Inspector Smoke Test", () => {
     });
 
     it("can call simple echo tool", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "echo",
-        "hello",
-        "--method",
-        "tools/call",
-        "--tool-name",
-        "echo",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["echo", "hello"],
+        ["--method", "tools/call", "--tool-name", "echo"],
+      );
 
       // Parse JSON response
       const response: InspectorToolCallResponse = JSON.parse(stdout);
@@ -205,17 +222,10 @@ describe("MCP Inspector Smoke Test", () => {
 
   describe("Command", () => {
     it("can list templated tools with proper schema", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "echo",
-        "{{text#message to echo}}",
-        "--method",
-        "tools/list",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["echo", "{{text#message to echo}}"],
+        ["--method", "tools/list"],
+      );
 
       // Parse JSON response
       const response: InspectorToolsListResponse = JSON.parse(stdout);
@@ -243,21 +253,17 @@ describe("MCP Inspector Smoke Test", () => {
     });
 
     it("can call templated tool with arguments", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "echo",
-        "{{text#message to echo}}",
-        "--method",
-        "tools/call",
-        "--tool-name",
-        "echo",
-        "--tool-arg",
-        "text=Hello from inspector!",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["echo", "{{text#message to echo}}"],
+        [
+          "--method",
+          "tools/call",
+          "--tool-name",
+          "echo",
+          "--tool-arg",
+          "text=Hello from inspector!",
+        ],
+      );
 
       // Parse JSON response
       const response: InspectorToolCallResponse = JSON.parse(stdout);
@@ -272,18 +278,10 @@ describe("MCP Inspector Smoke Test", () => {
     });
 
     it("can handle mixed template with additional args", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "echo",
-        "{{text#message to echo}}",
-        "[args...]",
-        "--method",
-        "tools/list",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["echo", "{{text#message to echo}}", "[args...]"],
+        ["--method", "tools/list"],
+      );
 
       // Parse JSON response
       const response: InspectorToolsListResponse = JSON.parse(stdout);
@@ -317,17 +315,10 @@ describe("MCP Inspector Smoke Test", () => {
 
   describe("ComplexCommand", () => {
     it("can handle git status command", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "git",
-        "status",
-        "--method",
-        "tools/list",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["git", "status"],
+        ["--method", "tools/list"],
+      );
 
       // Parse JSON response
       const response: InspectorToolsListResponse = JSON.parse(stdout);
@@ -348,18 +339,10 @@ describe("MCP Inspector Smoke Test", () => {
     });
 
     it("can handle git status command with args", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "git",
-        "status",
-        "[args...]",
-        "--method",
-        "tools/list",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["git", "status", "[args...]"],
+        ["--method", "tools/list"],
+      );
 
       // Parse JSON response
       const response: InspectorToolsListResponse = JSON.parse(stdout);
@@ -385,19 +368,10 @@ describe("MCP Inspector Smoke Test", () => {
     });
 
     it("can execute git status", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "git",
-        "status",
-        "--method",
-        "tools/call",
-        "--tool-name",
-        "git",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["git", "status"],
+        ["--method", "tools/call", "--tool-name", "git"],
+      );
 
       // Parse JSON response
       const response: InspectorToolCallResponse = JSON.parse(stdout);
@@ -419,19 +393,10 @@ describe("MCP Inspector Smoke Test", () => {
 
   describe("SayCommandRegression", () => {
     it("can handle say command with -v flag", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "say",
-        "-v",
-        "siri",
-        "{{speech#message to speak}}",
-        "--method",
-        "tools/list",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        ["say", "-v", "siri", "{{speech#message to speak}}"],
+        ["--method", "tools/list"],
+      );
 
       // Parse JSON response
       const response: InspectorToolsListResponse = JSON.parse(stdout);
@@ -460,19 +425,15 @@ describe("MCP Inspector Smoke Test", () => {
 
   describe("Multipletemplates", () => {
     it("can handle multiple template parameters", async () => {
-      const args = [
-        "@modelcontextprotocol/inspector",
-        "--cli",
-        binaryPath,
-        "rails",
-        "generate",
-        "{{generator#Rails generator name}}",
-        "{{name#Resource name}}",
-        "--method",
-        "tools/list",
-      ];
-
-      const { stdout, stderr } = await runInspectorCmd(args);
+      const { stdout, stderr } = await runInspectorCmd(
+        [
+          "rails",
+          "generate",
+          "{{generator#Rails generator name}}",
+          "{{name#Resource name}}",
+        ],
+        ["--method", "tools/list"],
+      );
 
       // Parse JSON response
       const response: InspectorToolsListResponse = JSON.parse(stdout);
