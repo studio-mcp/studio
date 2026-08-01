@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
--
+- Update to the [2026-07-28 MCP specification](https://modelcontextprotocol.io/specification/2026-07-28)
+  by moving from `@modelcontextprotocol/sdk` v1 to the v2 SDK
+  (`@modelcontextprotocol/server`). 2025-era clients keep working: the stdio
+  entry point negotiates the protocol era from the opening message.
+- Advertise tool input schemas as JSON Schema 2020-12 (requires zod 4).
+- Annotate the tool with `readOnlyHint`/`destructiveHint`/`openWorldHint` so
+  clients know studio runs an arbitrary command.
+- Send a tool list cache hint (`ttlMs`/`cacheScope`) — studio's tool list is
+  fixed by its command line and never changes while the process is alive.
+- Require Node.js 20 or newer.
 
 ## [0.3.0]
 
